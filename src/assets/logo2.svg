@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="245" height="245" viewBox="0 0 245 245">
+  <!-- 白色外环 -->
+  <circle cx="122.5" cy="122.5" r="115" fill="none" stroke="#fff" stroke-width="15" />
+  <!-- 白色相机机身：顶部两个缺口；镜头处挖 27px 透明圆孔；描边沿裁切形状与孔边缘 -->
+  <path
+    fill="#fff"
+    fill-rule="evenodd"
+    stroke="#cccccc"
+    stroke-width="1"
+    d="M64 87.3 L89.74 87.3 L89.74 78.5 L155.26 78.5 L155.26 87.3 L181 87.3 L181 166.5 L64 166.5 Z M122.5 98.14 a27 27 0 1 0 0.001 0 Z"
+  />
+  <!-- 镜头中心白色小圆点 -->
+  <circle cx="122.5" cy="124.95" r="17.5" fill="#fff" />
+</svg>

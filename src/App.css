@@ -1,0 +1,2272 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+:root {
+  --bg-base: #1b1b1f;
+  --bg-panel: #232327;
+  --bg-elevated: #2b2b30;
+  --bg-hover: #33333a;
+  --border: #3a3a42;
+  --text-primary: #e6e6e9;
+  --text-secondary: #9a9aa3;
+  --accent: #2b8fff;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  font-family: -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
+  background: var(--bg-base);
+  color: var(--text-primary);
+}
+
+/* ===== 全局滚动条（细、半透明，覆盖所有容器与 antd 弹出层） ===== */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.22) transparent;
+}
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+*::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.22);
+  border-radius: 99px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(255, 255, 255, 0.4);
+}
+*::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* ===== 滚动链控制：局部滚动区滚到边缘后不再带动外层滚动 ===== */
+html,
+body {
+  overscroll-behavior: none;
+}
+* {
+  overscroll-behavior: contain;
+}
+
+/* ===== 整体布局 ===== */
+.editor {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+.editor-body {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+
+/* ===== 拖拽上传遮罩 ===== */
+.drag-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 999;
+  background: rgba(27, 27, 31, 0.75);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.drag-overlay-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 40px 64px;
+  border: 2px dashed var(--accent);
+  border-radius: 16px;
+  background: rgba(43, 143, 255, 0.08);
+  color: var(--accent);
+}
+
+.drag-overlay-icon {
+  font-size: 48px;
+}
+
+.drag-overlay-title {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.drag-overlay-sub {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+/* ===== 顶部批量上传区 ===== */
+.app-header {
+  height: 64px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+  background: var(--bg-panel);
+  border-bottom: 1px solid var(--border);
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.app-logo {
+  width: 38px;
+  height: 38px;
+  border-radius: 8px;
+  background: var(--accent);
+  color: #fff;
+  font-weight: 700;
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+}
+
+.app-titles {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.25;
+}
+
+.app-name {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.app-desc {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.header-center {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.header-hint {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* ===== 左侧功能区 ===== */
+.tool-panel {
+  width: 220px;
+  flex: none;
+  background: var(--bg-panel);
+  border-right: 1px solid var(--border);
+  padding: 14px 12px;
+  overflow-y: auto;
+}
+
+.tool-panel-title {
+  font-size: 13px;
+  color: var(--text-secondary);
+  padding: 0 8px 12px;
+  font-weight: 600;
+  letter-spacing: 1px;
+}
+
+.tool-group {
+  margin-bottom: 18px;
+}
+
+.tool-group-title {
+  font-size: 12px;
+  color: var(--text-secondary);
+  padding: 0 8px 8px;
+}
+
+.tool-group-hint {
+  font-size: 11px;
+  color: var(--text-secondary);
+  opacity: 0.75;
+  padding: 0 8px 8px;
+}
+
+.tool-list {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.tool-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 4px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all 0.15s;
+  font-size: 12px;
+  user-select: none;
+}
+
+.tool-item:hover {
+  background: var(--bg-hover);
+}
+
+.tool-item.active {
+  background: rgba(43, 143, 255, 0.1);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.tool-icon {
+  font-size: 18px;
+}
+
+/* ===== 中间预览区 ===== */
+.preview-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  background: var(--bg-base);
+}
+
+.preview-toolbar {
+  height: 48px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  background: var(--bg-panel);
+  border-bottom: 1px solid var(--border);
+}
+
+.preview-name {
+  font-size: 13px;
+  max-width: 40%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.preview-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.watermark-orientation-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-right: 8px;
+  padding: 0 10px;
+  height: 28px;
+  border-radius: 6px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+}
+
+.watermark-size-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-right: 8px;
+  padding: 0 10px;
+  height: 28px;
+  border-radius: 6px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+}
+
+.watermark-size-label {
+  font-size: 12px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.watermark-size-unit {
+  font-size: 11px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.zoom-value {
+  font-size: 12px;
+  color: var(--text-secondary);
+  min-width: 44px;
+  text-align: center;
+}
+
+.preview-canvas {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  position: relative;
+}
+
+.preview-canvas > img {
+  max-width: 90%;
+  max-height: 90%;
+  object-fit: contain;
+  transition: transform 0.15s;
+}
+
+/* 底图：与成品图采用完全相同的定位方式（absolute + inset:0 + margin:auto），
+   保证二者走同一套布局取整路径，像素级重叠，杜绝 flex 居中与 absolute 居中
+   之间的 1px 亚像素偏差 */
+.preview-canvas > img.wm-base {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.5);
+}
+
+/* 合成成品图：绝对定位 + margin auto 在画布中居中，
+   与 flex 居中的原图（同为 90% 约束）尺寸、位置完全一致，逐像素重叠；
+   不参与交互（避免遮挡编辑层） */
+.preview-canvas > img.wm-composed {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  box-shadow: none;
+  pointer-events: none;
+  /* ===== 成品图位置微调入口（改这里立即生效，单位 px）=====
+     --wm-composed-dx：水平偏移，正数右移，负数左移
+     --wm-composed-dy：垂直偏移，正数下移，负数上移
+     例：想整体右移 2px、上移 1px →
+       --wm-composed-dx: 2px;
+       --wm-composed-dy: -1px;
+     注意：成品图是底图+水印的合成结果，偏移它时编辑层水印位置不变 */
+  --wm-composed-dx: 0px;
+  --wm-composed-dy: 0px;
+  transform: translate(var(--wm-composed-dx), var(--wm-composed-dy))
+    scale(var(--wm-zoom, 1));
+}
+
+.checkerboard {
+  background-image:
+    linear-gradient(
+      45deg,
+      #26262b 25%,
+      transparent 25%,
+      transparent 75%,
+      #26262b 75%
+    ),
+    linear-gradient(
+      45deg,
+      #26262b 25%,
+      transparent 25%,
+      transparent 75%,
+      #26262b 75%
+    );
+  background-color: #1f1f23;
+  background-size: 22px 22px;
+  background-position:
+    0 0,
+    11px 11px;
+}
+
+.preview-statusbar {
+  height: 32px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  background: var(--bg-panel);
+  border-top: 1px solid var(--border);
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+/* ===== 中间预览空态 ===== */
+.preview-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  max-width: 340px;
+  padding: 0 24px;
+  text-align: center;
+  color: var(--text-secondary);
+}
+
+.preview-empty-icon {
+  font-size: 44px;
+  color: #3c3c44;
+  margin-bottom: 2px;
+}
+
+.preview-empty-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.preview-empty-desc {
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+/* ===== 右侧图片列表区（原图 / 处理结果） ===== */
+.image-panel {
+  width: 300px;
+  flex: none;
+  background: var(--bg-panel);
+  border-left: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+/* 顶部：分段 Tab */
+.ip-header {
+  flex: none;
+  padding: 10px 10px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ip-seg {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  padding: 3px;
+  background: var(--bg-base);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.ip-seg-btn {
+  border: 0;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 12px;
+  padding: 5px 4px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: all 0.15s;
+  user-select: none;
+}
+
+.ip-seg-btn:hover {
+  color: var(--text-primary);
+}
+
+.ip-seg-btn.active {
+  background: var(--accent);
+  color: #fff;
+}
+
+.ip-seg-num {
+  font-size: 10px;
+  font-weight: 600;
+  min-width: 20px;
+  height: 16px;
+  line-height: 16px;
+  text-align: center;
+  border-radius: 99px;
+  padding: 0 5px;
+  background: rgba(255, 255, 255, 0.16);
+  color: inherit;
+  font-variant-numeric: tabular-nums;
+}
+
+.ip-seg-btn:not(.active) .ip-seg-num {
+  background: rgba(255, 255, 255, 0.09);
+}
+
+.ip-hint {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  padding: 0 4px 2px;
+}
+
+.ip-hint-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 99px;
+  background: #d8a23a;
+  flex: none;
+}
+
+/* 内容滚动容器：唯一负责纵向滚动，头部与底部永远固定 */
+.ip-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 10px 10px 6px;
+  overscroll-behavior: contain;
+}
+
+/* 虚拟化列表：只渲染可视区附近的行，行由 .ip-vrow 绝对定位排布 */
+.ip-vport {
+  position: relative;
+  width: 100%;
+}
+
+.ip-vrow {
+  position: absolute;
+  left: 0;
+  right: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+/* 卡片 */
+.ip-card {
+  position: relative;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  user-select: none;
+}
+
+.ip-card:hover {
+  border-color: #575767;
+}
+
+.ip-card:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.ip-card.is-active {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+.ip-thumb {
+  position: relative;
+  aspect-ratio: 1/1;
+  overflow: hidden;
+  background: var(--bg-base);
+}
+
+.ip-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.ip-badge {
+  position: absolute;
+  left: 6px;
+  top: 6px;
+  z-index: 2;
+  font-size: 10px;
+  line-height: 16px;
+  padding: 0 6px;
+  border-radius: 99px;
+  background: rgba(0, 0, 0, 0.72);
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-weight: 500;
+}
+
+.ip-badge-origin {
+  background: rgba(30, 30, 36, 0.6);
+}
+
+.ip-badge-ok {
+  background: rgba(23, 148, 84, 0.88);
+}
+
+.ip-badge-fail {
+  background: rgba(214, 69, 69, 0.9);
+}
+
+.ip-badge-solo {
+  left: auto;
+  right: 6px;
+  top: auto;
+  bottom: 6px;
+  background: rgba(235, 145, 24, 0.92);
+}
+
+/* 未处理 / 失败占位 */
+.ip-placeholder {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  color: var(--text-secondary);
+  background:
+    repeating-linear-gradient(
+      -45deg,
+      transparent,
+      transparent 10px,
+      rgba(255, 255, 255, 0.012) 10px,
+      rgba(255, 255, 255, 0.012) 20px
+    ),
+    var(--bg-base);
+  font-size: 11px;
+}
+
+.ip-placeholder.is-pending {
+  border: 1px dashed rgba(255, 255, 255, 0.16);
+  border-radius: 0;
+  inset: 4px;
+  background: rgba(255, 255, 255, 0.018);
+}
+
+.ip-placeholder.is-failed {
+  color: #e06a6a;
+}
+
+.ip-ph-icon {
+  font-size: 22px;
+}
+
+/* 缩略图悬浮操作 */
+.ip-actions {
+  position: absolute;
+  right: 6px;
+  top: 6px;
+  z-index: 2;
+  display: flex;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.ip-card:hover .ip-actions,
+.ip-card.is-active .ip-actions,
+.ip-card:focus-within .ip-actions {
+  opacity: 1;
+}
+
+.ip-actions .ant-btn {
+  width: 24px;
+  height: 24px;
+  min-width: 0;
+  padding: 0;
+  font-size: 12px;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.6);
+  border-radius: 6px;
+}
+
+.ip-actions .ant-btn:hover {
+  color: #fff !important;
+  background: rgba(0, 0, 0, 0.85) !important;
+}
+
+/* 卡片信息
+   高度被锁死为 47px（与 ImagePanel.tsx 中 IP_META_H 常量保持一致，
+   否则虚拟化行定位会漂移）；行高通过显式 line-height 收敛，杜绝字体差异 */
+.ip-meta {
+  height: 47px;
+  padding: 6px 8px 7px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.ip-name {
+  font-size: 12px;
+  line-height: 17px;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ip-sub {
+  display: flex;
+  align-items: center;
+  font-size: 10px;
+  line-height: 14px;
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ip-sub-failed {
+  color: #e06a6a;
+}
+
+/* 底部固定按钮 */
+.ip-footer {
+  flex: none;
+  display: flex;
+  gap: 8px;
+  padding: 10px;
+  border-top: 1px solid var(--border);
+}
+
+.ip-footer .ant-btn {
+  flex: 1;
+}
+
+/* 空态 */
+.ip-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 56px 16px 40px;
+  text-align: center;
+}
+
+.ip-empty-icon {
+  font-size: 36px;
+  color: #3f3f47;
+}
+
+.ip-empty-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.ip-empty-desc {
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--text-secondary);
+}
+
+.ip-empty .ant-btn {
+  margin-top: 4px;
+}
+
+/* ===== 左侧本机水印预设 ===== */
+.preset-empty {
+  margin: 16px 0;
+}
+
+.preset-watermark-img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.watermark-img {
+  display: block;
+  max-width: none;
+  pointer-events: none;
+  -webkit-user-drag: none;
+  user-select: none;
+  position: relative;
+  top: -2px;
+  left: -2px;
+  /* 注意：不要加 margin——logo-block 是锚点容器，margin 会使预览锚点偏离图片中心，导致导出位置偏移 */
+}
+
+.preset-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.preset-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all 0.15s;
+  font-size: 12px;
+  user-select: none;
+}
+
+.preset-item:hover {
+  background: var(--bg-hover);
+}
+
+.preset-item.active {
+  background: rgba(43, 143, 255, 0.1);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* 水印 div 预览 */
+.preset-watermark {
+  width: 52px;
+  height: 30px;
+  flex: none;
+  border-radius: 6px;
+  background:
+    linear-gradient(
+      45deg,
+      #26262b 25%,
+      transparent 25%,
+      transparent 75%,
+      #26262b 75%
+    ),
+    linear-gradient(
+      45deg,
+      #26262b 25%,
+      transparent 25%,
+      transparent 75%,
+      #26262b 75%
+    );
+  background-color: #1f1f23;
+  background-size: 10px 10px;
+  background-position:
+    0 0,
+    5px 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.preset-watermark-text {
+  font-weight: 700;
+  font-style: italic;
+  letter-spacing: 1px;
+  white-space: nowrap;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+.preset-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.preset-tags {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.preset-type-icon {
+  font-size: 10px;
+  color: var(--text-secondary);
+}
+
+.preset-builtin-tag {
+  margin: 0 !important;
+  font-size: 10px;
+  line-height: 16px;
+  padding: 0 4px;
+  border-radius: 3px;
+}
+
+.preset-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.preset-actions {
+  display: flex;
+  gap: 2px;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.preset-item:hover .preset-actions {
+  opacity: 1;
+}
+
+/* ===== 时间地点 LOGO ===== */
+.datetime-logo {
+  color: #fff;
+  text-align: center;
+  padding: 6px 14px;
+  border-radius: 4px;
+  line-height: 1.3;
+  white-space: nowrap;
+  /* 一丢丢文字阴影，增强可读性 */
+  text-shadow: 0 0.125px 1px rgba(0, 0, 0, 0.3);
+}
+
+.datetime-time {
+  font-size: 42px;
+  margin-bottom: -5px;
+  font-family: cursive;
+  font-weight: 100;
+}
+/* 时间/日期数字字形图：高 = 当前字号（1em），宽按 240×280 原图等比；行内垂直居中 */
+.datetime-num {
+  display: inline-block;
+  height: 1em;
+  width: auto;
+  vertical-align: middle;
+}
+.datetime-colon {
+  position: relative;
+  display: inline-block;
+  width: 6px; /* 点的大小 */
+  height: 17px; /* 两个点圆心间距 12px + 点直径 5px（与 canvas dotGap 同步） */
+  margin: 0 3px; /* 左右间距 */
+  vertical-align: middle;
+  top: -6px;
+}
+.datetime-colon::before,
+.datetime-colon::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  width: 5px; /* 点的直径 */
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.datetime-colon::before {
+  top: 0;
+}
+.datetime-colon::after {
+  bottom: 0;
+}
+.datetime-info {
+  letter-spacing: 0.5px;
+  font-size: 9px;
+  opacity: 0.9;
+  font-weight: 400;
+}
+.datetime-date {
+  font-family: cursive;
+  font-size: 11px;
+  left: -3px;
+  position: relative;
+  /* 按字形视觉中心与星期/地点对齐（baseline 对齐时 cursive 与系统字体度量差异会造成行高错位） */
+  vertical-align: middle;
+}
+.datetime-week {
+  /* 视觉微调：星期文字左移，不影响其后地点位置（与 canvas dateShift/weekShift 思路一致） */
+  position: relative;
+  left: -2px;
+}
+.date-sep {
+  display: inline-block;
+  width: 4px; /* 横杠长度 */
+  height: 1px; /* 横杠粗细 */
+  vertical-align: middle;
+  background: currentColor;
+  position: relative;
+  margin: 0 1px;
+  top: -1.5px;
+}
+
+.datetime-logo-small {
+  padding: 3px 8px;
+  transform: scale(0.62);
+  transform-origin: center;
+  line-height: 1.2;
+}
+
+.datetime-logo-small .datetime-time {
+  font-size: 18px;
+  letter-spacing: 2px;
+}
+
+.datetime-logo-small .datetime-info {
+  font-size: 8px;
+}
+
+/* ===== 地理信息水印 ===== */
+.geo-info-logo {
+  position: relative;
+  color: #f1f1f1;
+  font-family: "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  line-height: 1.3;
+  white-space: nowrap;
+}
+
+/* 备注行：挂在主体四行下方。absolute 使其不参与布局，
+   卡片高度/宽度恒定 → 加不加备注，四行位置与卡片中心点都不变 */
+.geo-info-remark {
+  position: absolute;
+  top: 100%;
+  left: 0;
+}
+
+.geo-info-logo-small {
+  transform: scale(0.55);
+  transform-origin: center center;
+}
+
+.geo-info-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.geo-info-label {
+  font-weight: 500;
+  font-size: 9px;
+  color: rgba(241, 241, 241, 1);
+  letter-spacing: 1px; /* ← label 字间距，改大拉得更开，0 关闭 */
+  min-width: 2em;
+  text-align: justify;
+  text-align-last: justify;
+}
+
+.geo-info-value {
+  font-weight: 700;
+  font-size: 10px;
+  color: rgba(241, 241, 241, 1);
+  white-space: pre; /* 保留所有空格（含连续空格），输入"雨  26°"也能原样显示 */
+}
+
+/* 双击编辑输入框 */
+.datetime-input {
+  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.65);
+  border-radius: 3px;
+  color: #fff;
+  outline: none;
+  text-align: center;
+  font-family: inherit;
+  padding: 1px 4px;
+  box-sizing: border-box;
+}
+.datetime-input:focus {
+  border-color: #fff;
+  background: rgba(255, 255, 255, 0.22);
+}
+.datetime-time .datetime-input {
+  width: 110px;
+  font-size: 24px;
+}
+.datetime-date .datetime-input {
+  width: 130px;
+  font-size: 11px;
+}
+.datetime-week .datetime-input {
+  width: 92px;
+  font-size: 11px;
+}
+.datetime-loc {
+  font-size: 10px;
+  letter-spacing: 0px;
+  /* 视觉微调：地点整体右移（与 canvas locShift 一致），不影响前方日期/星期 */
+  position: relative;
+  left: 2px;
+}
+/* 地点中的「·」单独渲染：在两侧既有空格外再各加 1px（与 canvas dotPad 同步） */
+.datetime-dot {
+  margin-left: 2px;
+  margin-right: 2px;
+}
+/* 地点前定位图标（dingwei3.png 替换原 📍 emoji）：
+   margin-left:0 紧贴前方内容；margin-right:3px 与后方地点文本的间距（与 canvas locIconTrail 一致）。
+   另外图标自身再上移 1px、右移 1px（与 canvas locIconDx/Dy 一致） */
+.datetime-loc-icon {
+  height: 11px;
+  width: auto;
+  margin-left: 0;
+  margin-right: 3px;
+  vertical-align: -3px;
+  position: relative;
+  top: -1px;
+  left: 1px;
+}
+.datetime-loc .datetime-input {
+  width: 180px;
+  font-size: 9px;
+}
+.datetime-logo-small .datetime-input {
+  font-size: 10px;
+}
+
+/* ===== 编辑弹窗表单 ===== */
+.datetime-edit-modal .ant-modal-content {
+  background: #1c1c20;
+  border: 1px solid #3a3a42;
+  border-radius: 12px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.55);
+  padding: 0;
+  overflow: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.25) transparent;
+}
+.datetime-edit-modal .ant-modal-content::-webkit-scrollbar {
+  width: 6px;
+}
+.datetime-edit-modal .ant-modal-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+.datetime-edit-modal .ant-modal-content::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.25);
+  border-radius: 99px;
+}
+.datetime-edit-modal .ant-modal-header {
+  background: transparent;
+  margin: 0;
+  padding: 18px 60px 16px 20px;
+  border-bottom: 1px solid #313137;
+}
+.datetime-edit-modal .ant-modal-title {
+  color: #fff;
+  line-height: 1.3;
+}
+.datetime-edit-modal .ant-modal-body {
+  padding: 0;
+}
+.datetime-edit-modal .ant-modal-close {
+  color: rgba(255, 255, 255, 0.65);
+  top: 18px;
+  right: 18px;
+}
+.datetime-edit-modal .ant-modal-close:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* 标题区：图标 + 主副标题 */
+.datetime-edit-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.datetime-edit-header-icon {
+  width: 34px;
+  height: 34px;
+  flex: none;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  color: #fff;
+  background: var(--accent);
+}
+.datetime-edit-header-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.datetime-edit-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: 0.2px;
+}
+.datetime-edit-subtitle {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.datetime-edit-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  align-items: stretch;
+  padding: 16px 20px 0;
+}
+.datetime-edit-form > .datetime-locate-bar {
+  grid-column: 1 / -1;
+}
+.datetime-edit-field {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid #33333a;
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s;
+}
+.datetime-edit-field:focus-within {
+  border-color: rgba(43, 143, 255, 0.65);
+  box-shadow: 0 0 0 2px rgba(43, 143, 255, 0.16);
+}
+.datetime-edit-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  color: rgba(255, 255, 255, 0.92);
+}
+.datetime-edit-label .anticon {
+  color: var(--accent);
+  font-size: 13px;
+}
+/* 定位按钮（地点输入框后缀图标） */
+.datetime-locate-icon {
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 14px;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+.datetime-locate-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 2px 0 2px;
+}
+.datetime-locate-btn {
+  flex: none;
+}
+.datetime-locate-tip {
+  color: rgba(255, 255, 255, 0.45);
+  font-size: 12px;
+  line-height: 1.4;
+}
+.datetime-locate-icon:hover {
+  color: #2b8fff;
+}
+.datetime-locate-icon.locating {
+  color: #2b8fff;
+  animation: datetime-locate-spin 0.9s linear infinite;
+  cursor: default;
+  pointer-events: none;
+}
+@keyframes datetime-locate-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+/* 字段内的控件整体居中，避免被卡片拉伸导致左对齐散开 */
+.datetime-edit-field > .datetime-time-picker,
+.datetime-edit-field > .datetime-date-group,
+.datetime-edit-field > .datetime-week-select {
+  align-self: center;
+}
+.datetime-edit-error {
+  font-size: 12px;
+  color: #ff7875;
+  line-height: 1.4;
+}
+.datetime-edit-hint {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.5);
+  line-height: 1.4;
+  padding-top: 2px;
+}
+
+/* 模式切换：分段控件 */
+.datetime-mode-toggle {
+  display: flex;
+  gap: 4px;
+  padding: 3px;
+  border-radius: 8px;
+  background: #19191d;
+  border: 1px solid #35353c;
+}
+.datetime-mode-btn {
+  flex: 1;
+  padding: 6px 2px;
+  font-size: 12.5px;
+  line-height: 1.7;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.62);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  white-space: nowrap;
+}
+.datetime-mode-btn:hover {
+  color: #fff;
+}
+.datetime-mode-btn.active {
+  background: var(--accent);
+  color: #fff;
+  font-weight: 500;
+}
+
+/* 时间双下拉：数字格 */
+/* 时间合成控件（TimePicker：一个输入框内选择 时:分） */
+.datetime-time-picker.ant-picker {
+  width: 128px;
+  background: #19191d;
+  border-color: #3f3f47;
+  border-radius: 8px;
+  box-shadow: none;
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s;
+}
+.datetime-time-picker.ant-picker:hover {
+  border-color: #55555f;
+}
+.datetime-time-picker.ant-picker-focused,
+.datetime-time-picker.ant-picker-status-error.ant-picker-focused {
+  border-color: #2b8fff !important;
+  box-shadow: 0 0 0 2px rgba(43, 143, 255, 0.22);
+}
+.datetime-time-picker .ant-picker-input > input {
+  color: #fff;
+  font-family: "SF Mono", "Cascadia Mono", Consolas, monospace;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 1px;
+  font-size: 13px;
+  text-align: center;
+}
+.datetime-time-picker .ant-picker-suffix {
+  color: rgba(255, 255, 255, 0.4);
+}
+.datetime-time-picker.ant-picker-status-error {
+  border-color: #ff4d4f;
+}
+.datetime-time-select .ant-select-selection-item,
+.datetime-date-select .ant-select-selection-item {
+  font-family: "SF Mono", "Cascadia Mono", Consolas, monospace;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 1px;
+}
+.datetime-time-select .ant-select-selector,
+.datetime-date-select .ant-select-selector {
+  padding-inline: 2px !important;
+}
+.datetime-range-inputs {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.datetime-to {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.35);
+  flex: none;
+  user-select: none;
+}
+
+/* 日期合成整体（年-月-日 外观像一个输入框，内部仍是三段下拉） */
+.datetime-date-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  width: fit-content;
+  background: #19191d;
+  border: 1px solid #3f3f47;
+  border-radius: 8px;
+  padding: 0 10px;
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s;
+}
+/* 隐藏三段下拉各自的箭头，整体才像一个输入框 */
+.datetime-date-group .ant-select-arrow {
+  display: none;
+}
+/* 覆盖弹窗全局下拉规则，确保三段下拉在组内透明无边框 */
+.datetime-edit-modal .datetime-date-group .ant-select .ant-select-selector {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding-inline: 0 !important;
+}
+.datetime-edit-modal
+  .datetime-date-group
+  .ant-select:hover
+  .ant-select-selector,
+.datetime-edit-modal
+  .datetime-date-group
+  .ant-select-focused
+  .ant-select-selector {
+  border: none !important;
+  box-shadow: none !important;
+}
+.datetime-date-group:hover {
+  border-color: #55555f;
+}
+.datetime-date-group:focus-within {
+  border-color: #2b8fff;
+  box-shadow: 0 0 0 2px rgba(43, 143, 255, 0.22);
+}
+.datetime-date-group.status-error {
+  border-color: #ff4f4f;
+}
+.datetime-date-group .ant-select {
+  flex: none;
+}
+.datetime-date-group .ant-select-selection-item {
+  text-align: center;
+  line-height: 32px;
+  font-family: "SF Mono", "Cascadia Mono", Consolas, monospace;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 1px;
+}
+.datetime-date-select-year {
+  width: 76px;
+}
+.datetime-date-select-month {
+  width: 58px;
+}
+.datetime-date-select-day {
+  width: 58px;
+}
+.datetime-date-sep {
+  color: rgba(255, 255, 255, 0.3);
+  font-size: 12px;
+  flex: none;
+  user-select: none;
+}
+
+/* 星期下拉 */
+.datetime-week-select {
+  width: 112px;
+}
+.datetime-week-select .ant-select-selection-item {
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 弹窗内输入框 / 下拉框深色适配（label 全白字，白字白底问题一并解决） */
+.datetime-edit-modal .ant-input {
+  height: 36px;
+  background: #19191d;
+  border-color: #3f3f47;
+  color: #fff;
+  border-radius: 8px;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.datetime-edit-modal .ant-input::placeholder {
+  color: rgba(255, 255, 255, 0.35);
+}
+.datetime-edit-modal .ant-input:hover {
+  border-color: #55555f;
+}
+.datetime-edit-modal .ant-input:focus,
+.datetime-edit-modal .ant-input-focused {
+  border-color: #2b8fff;
+  box-shadow: 0 0 0 2px rgba(43, 143, 255, 0.22);
+}
+/* 带 suffix 的输入框（ant-input-affix-wrapper 包裹） */
+.datetime-edit-modal .ant-input-affix-wrapper {
+  height: 36px;
+  background: #19191d;
+  border-color: #3f3f47;
+  border-radius: 8px;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.datetime-edit-modal .ant-input-affix-wrapper .ant-input {
+  height: auto;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+}
+.datetime-edit-modal .ant-input-affix-wrapper:hover,
+.datetime-edit-modal .ant-input-affix-wrapper-focused,
+.datetime-edit-modal .ant-input-affix-wrapper:focus-within {
+  border-color: #2b8fff;
+  box-shadow: 0 0 0 2px rgba(43, 143, 255, 0.22);
+}
+.datetime-edit-modal .ant-select .ant-select-selector {
+  background: #19191d !important;
+  border-color: #3f3f47 !important;
+  color: #fff;
+  border-radius: 8px;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.datetime-edit-modal .ant-select:hover .ant-select-selector,
+.datetime-edit-modal .ant-select-focused .ant-select-selector {
+  border-color: #2b8fff !important;
+  box-shadow: 0 0 0 2px rgba(43, 143, 255, 0.22) !important;
+}
+.datetime-edit-modal .ant-select-selection-item,
+.datetime-edit-modal .ant-select-arrow {
+  color: #fff;
+}
+
+/* 下拉面板（渲染在 body 下，需单独覆盖） */
+.datetime-time-select-dropdown.ant-select-dropdown {
+  background: #26262b;
+  border: 1px solid #3a3a42;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  padding: 4px;
+  min-width: 68px;
+}
+.datetime-time-select-dropdown .ant-select-item {
+  color: rgba(255, 255, 255, 0.85);
+  border-radius: 6px;
+  padding: 5px 10px;
+  font-family: "SF Mono", "Cascadia Mono", Consolas, monospace;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+.datetime-time-select-dropdown .ant-select-item-option-active {
+  background: rgba(255, 255, 255, 0.06);
+}
+.datetime-time-select-dropdown .ant-select-item-option-selected {
+  background: #2b8fff;
+  color: #fff;
+  font-weight: 500;
+}
+/* 下拉面板滚动条（细、半透明，与深色面板匹配） */
+.datetime-time-select-dropdown .ant-select-dropdown-content,
+.datetime-time-select-dropdown .rc-virtual-list-holder {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.25) transparent;
+}
+.datetime-time-select-dropdown .ant-select-dropdown-content::-webkit-scrollbar,
+.datetime-time-select-dropdown .rc-virtual-list-holder::-webkit-scrollbar {
+  width: 5px;
+}
+.datetime-time-select-dropdown
+  .ant-select-dropdown-content::-webkit-scrollbar-track,
+.datetime-time-select-dropdown
+  .rc-virtual-list-holder::-webkit-scrollbar-track {
+  background: transparent;
+}
+.datetime-time-select-dropdown
+  .ant-select-dropdown-content::-webkit-scrollbar-thumb,
+.datetime-time-select-dropdown
+  .rc-virtual-list-holder::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.25);
+  border-radius: 99px;
+}
+.datetime-time-select-dropdown
+  .ant-select-dropdown-content::-webkit-scrollbar-thumb:hover,
+.datetime-time-select-dropdown
+  .rc-virtual-list-holder::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.45);
+}
+
+/* 时间合成控件的下拉面板（渲染在 body 下，需单独覆盖） */
+.datetime-time-picker-dropdown.ant-picker-dropdown {
+  border-radius: 8px;
+}
+.datetime-time-picker-dropdown .ant-picker-panel-container {
+  background: #26262b;
+  border: 1px solid #3a3a42;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  overflow: hidden;
+}
+.datetime-time-picker-dropdown .ant-picker-time-panel-column {
+  font-family: "SF Mono", "Cascadia Mono", Consolas, monospace;
+  font-variant-numeric: tabular-nums;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.25) transparent;
+}
+.datetime-time-picker-dropdown
+  .ant-picker-time-panel-column::-webkit-scrollbar {
+  width: 5px;
+}
+.datetime-time-picker-dropdown
+  .ant-picker-time-panel-column::-webkit-scrollbar-track {
+  background: transparent;
+}
+.datetime-time-picker-dropdown
+  .ant-picker-time-panel-column::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.25);
+  border-radius: 99px;
+}
+.datetime-time-picker-dropdown
+  .ant-picker-time-panel-column::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.45);
+}
+.datetime-time-picker-dropdown .ant-picker-time-panel-cell-inner {
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 13px;
+  padding: 6px 12px;
+}
+.datetime-time-picker-dropdown
+  .ant-picker-time-panel-cell:hover
+  .ant-picker-time-panel-cell-inner {
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+}
+.datetime-time-picker-dropdown
+  .ant-picker-time-panel-cell-selected
+  .ant-picker-time-panel-cell-inner {
+  background: #2b8fff;
+  color: #fff;
+  font-weight: 500;
+}
+
+/* 弹窗底部按钮 */
+.datetime-edit-modal .ant-modal-footer {
+  padding: 14px 20px 18px;
+  border-top: 1px solid #313137;
+  margin-top: 10px;
+  background: transparent;
+}
+.datetime-edit-modal .ant-modal-footer .ant-btn {
+  border-radius: 8px;
+  font-size: 13px;
+  height: 36px;
+  padding: 0 20px;
+  font-weight: 500;
+}
+.datetime-edit-modal .ant-modal-footer .ant-btn-default {
+  background: transparent;
+  border-color: #4a4a53;
+  color: rgba(255, 255, 255, 0.85);
+}
+.datetime-edit-modal .ant-modal-footer .ant-btn-default:hover {
+  border-color: #66666f;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.06);
+}
+.datetime-edit-modal .ant-modal-footer .ant-btn-primary {
+  background: var(--accent);
+  border: none;
+}
+.datetime-edit-modal .ant-modal-footer .ant-btn-primary:hover {
+  background: #1d7ff5;
+}
+
+/* ===== 预览区 div 水印叠加（可拖拽） ===== */
+.preview-watermark {
+  position: absolute;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 16px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.18);
+  border: 1px dashed transparent;
+  cursor: move;
+  touch-action: none;
+  user-select: none;
+}
+
+/* datetime 变体不需要外层内衬背景 */
+.preview-watermark-plain {
+  padding: 0;
+  background: transparent;
+}
+
+.preview-watermark:hover {
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+/* 合成预览模式（底图 = 合成成品图，与导出同一管线）：
+   预览区永远只显示最终成品图（所见即所得），编辑层退化为纯透明交互层：
+   无边框、无背景、无按钮、任何状态（静止/hover/拖拽/聚焦）都不渲染视觉，
+   仅保留拖拽、方向键等交互（拖动时合成图快速重绘跟随）。
+   注意：透明规则挂在 .wm-synthetic 上（而非合成图就绪的 .wm-has-composed），
+   确保防抖合成期间编辑层也绝不闪现。 */
+.preview-canvas .preview-watermark.wm-synthetic {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+.preview-canvas .preview-watermark.wm-synthetic:hover,
+.preview-canvas .preview-watermark.wm-synthetic:focus {
+  border-color: transparent;
+  box-shadow: none;
+}
+.preview-canvas
+  .preview-watermark.wm-synthetic
+  .watermark-content
+  > :not(.watermark-actions) {
+  /* !important：压过水印自身的行内 opacity（如地理信息水印、图片 LOGO 的透明度），
+     确保合成预览模式下编辑层永远不重影 */
+  opacity: 0 !important;
+}
+/* 删除/编辑按钮：默认隐藏，hover 水印时浮现（水印本体始终来自合成图，不重影） */
+.preview-canvas .preview-watermark.wm-synthetic .watermark-actions {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s;
+}
+.preview-canvas .preview-watermark.wm-synthetic:hover .watermark-actions,
+.preview-canvas .preview-watermark.wm-synthetic:focus .watermark-actions,
+.preview-canvas
+  .preview-watermark.wm-synthetic.wm-actions-visible
+  .watermark-actions {
+  opacity: 1;
+  pointer-events: auto;
+}
+.preview-watermark:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(43, 143, 255, 0.22);
+}
+
+.watermark-actions {
+  position: absolute;
+  /* 钉在内容块视觉右上角内侧（top/right: 0 + 反缩放 origin 右上角）：
+     相比原来的 (1-factor)*50% 外推，按钮始终落在水印 hover 区域内，鼠标可直达 */
+  top: 0;
+  right: 0;
+  display: flex;
+  gap: 4px;
+  /* translate 跟随 LOGO 图片偏移（--wm-actions-dx/dy，与图片同源常量），
+     避免图片被 LOGO_IMG_DX/DY 偏移后，删除/编辑按钮悬在原位跑偏 */
+  transform: translate(var(--wm-actions-dx, 0px), var(--wm-actions-dy, 0px))
+    scale(calc(1 / var(--wm-factor, 1)));
+  transform-origin: top right;
+  z-index: 2;
+}
+
+.watermark-remove,
+.watermark-edit {
+  position: relative;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  font-size: 12px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+/* 扩展点击/悬停热区（伪元素不改变布局与视觉位置，小按钮也好点） */
+.watermark-remove::before,
+.watermark-edit::before {
+  content: "";
+  position: absolute;
+  inset: -14px;
+}
+
+.preview-watermark:hover .watermark-remove,
+.preview-watermark:focus .watermark-remove,
+.preview-watermark:hover .watermark-edit,
+.preview-watermark:focus .watermark-edit,
+/* JS 悬停桥接：鼠标从水印移向按钮的途中（按钮热区）保持可见 */
+.preview-watermark.wm-actions-visible .watermark-remove,
+.preview-watermark.wm-actions-visible .watermark-edit {
+  opacity: 1;
+}
+
+.watermark-remove:hover {
+  background: rgba(255, 77, 79, 0.9);
+}
+
+.watermark-edit:hover {
+  background: rgba(43, 143, 255, 0.9);
+}
+
+.watermark-pos {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.watermark-pos-orient {
+  display: inline-flex;
+  align-items: center;
+  height: 18px;
+  line-height: 18px;
+  padding: 0 8px;
+  margin: 0 2px;
+  border-radius: 9px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+.watermark-pos-orient.is-portrait {
+  background: rgba(255, 184, 77, 0.18);
+  color: #ffb84d;
+}
+
+.watermark-pos-orient.is-landscape {
+  background: rgba(43, 143, 255, 0.18);
+  color: #5ca7ff;
+}
+
+/* 水印本体一丢丢非常微弱的模糊（柔化边缘；与合成管线 WATERMARK_BLUR_PX 对应，随水印等比缩放）。
+   用 :not(.watermark-actions) 只模糊水印本体，操作按钮保持清晰。 */
+.preview-watermark .watermark-content > :not(.watermark-actions) {
+  /* 模糊值由 JS 注入 --wm-blur（= WATERMARK_BLUR_PX × factor，与合成管线同一常量），
+     只模糊水印本体（文字/图片/日期 LOGO），操作按钮保持清晰 */
+  filter: blur(var(--wm-blur, 0px));
+}
+
+.watermark-text {
+  font-weight: 700;
+  font-style: italic;
+  letter-spacing: 4px;
+  white-space: nowrap;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.9);
+}
+
+/* ==================== 裁剪模式（react-image-crop） ==================== */
+
+.preview-canvas.cropping {
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+}
+
+/* 裁剪功能条：位于预览工具条与画布之间，不遮挡画面 */
+.crop-bar {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 46px;
+  padding: 0 12px;
+  background: var(--bg-panel);
+  border-bottom: 1px solid var(--border);
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.crop-bar::-webkit-scrollbar {
+  display: none;
+}
+
+.crop-bar .ant-segmented,
+.crop-bar .ant-btn,
+.crop-bar .crop-size-hint,
+.crop-bar-title {
+  flex: none;
+}
+
+.crop-bar-title {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  color: var(--text-secondary);
+  margin-right: 6px;
+  white-space: nowrap;
+}
+
+.crop-bar .ant-segmented {
+  font-size: 12px;
+}
+
+.crop-bar-divider {
+  width: 1px;
+  height: 16px;
+  flex: none;
+  background: var(--border);
+  margin: 0 4px;
+}
+
+.crop-bar-spacer {
+  flex: 1;
+}
+
+.crop-size-hint {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-right: 6px;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.crop-btn-cancel {
+  color: var(--text-secondary);
+}
+
+.crop-btn-apply {
+  min-width: 88px;
+}
+
+.crop-icon-180 {
+  transform: scaleX(-1);
+}
+
+/* 画布舞台 */
+.crop-stage {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.crop-zoom {
+  flex: none;
+}
+
+.crop-reactcrop {
+  outline: none;
+}
+
+.crop-media {
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.crop-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.crop-busy-mask {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.3);
+  pointer-events: none;
+}
+
+.crop-status-hint {
+  margin-left: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ReactCrop 深色主题下视觉微调 */
+.crop-stage .ReactCrop .ReactCrop__crop-selection {
+  border: 1.5px solid rgba(255, 255, 255, 0.92);
+  border-radius: 2px;
+}
+
+.crop-stage .ReactCrop .ReactCrop__drag-handle {
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.6);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.85);
+}
+
+.crop-stage .ReactCrop .ReactCrop__rule-of-thirds-hz,
+.crop-stage .ReactCrop .ReactCrop__rule-of-thirds-vt {
+  background: rgba(255, 255, 255, 0.55);
+}
+
+.crop-stage .ReactCrop .ReactCrop__child-wrapper > img {
+  display: block;
+}
+
+/* ===== 水印作用范围状态条（ToolPanel 顶部） ===== */
+.scope-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  margin-bottom: 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-elevated);
+}
+
+.scope-bar-dot {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 3px rgba(43, 143, 255, 0.16);
+}
+
+.scope-bar-dot.is-solo {
+  background: #ff9f2e;
+  box-shadow: 0 0 0 3px rgba(255, 159, 46, 0.18);
+}
+
+.scope-bar-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.scope-bar-title {
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 16px;
+  color: var(--text-primary);
+}
+
+.scope-bar-label {
+  font-size: 11px;
+  line-height: 15px;
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.scope-bar-action.ant-btn {
+  flex: none;
+  height: 24px;
+  margin: 0 -4px;
+  padding: 0 6px;
+  font-size: 12px;
+  border-radius: 6px;
+}
+
+.scope-bar-action.ant-btn:hover {
+  background: var(--bg-hover);
+}
+
+/* ===== 水印应用范围弹窗 ===== */
+.scope-modal-tip {
+  font-size: 12px;
+  color: var(--text-secondary);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 10px;
+  margin-bottom: 14px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.scope-radio-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.scope-radio-group .ant-radio-wrapper {
+  display: flex;
+  align-items: flex-start;
+  margin-inline-end: 0;
+  padding: 8px 10px;
+  border-radius: 6px;
+}
+
+.scope-radio-group .ant-radio-wrapper:hover {
+  background: var(--bg-elevated);
+}
+
+.scope-radio-label {
+  font-weight: 600;
+  margin-left: 6px;
+}
+
+.scope-radio-desc {
+  display: block;
+  margin-left: 6px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin-top: 2px;
+}
+
+.scope-image-list {
+  margin-top: 12px;
+  max-height: 240px;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px 4px;
+  background: var(--bg-elevated);
+}
+
+.scope-image-list .ant-checkbox-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.scope-image-item {
+  display: flex !important;
+  align-items: center;
+  gap: 6px;
+  margin-inline-end: 0 !important;
+  padding: 4px 8px;
+  border-radius: 6px;
+  width: 100%;
+}
+
+.scope-image-item:hover {
+  background: var(--bg-hover);
+}
+
+.scope-image-thumb {
+  width: 36px;
+  height: 36px;
+  object-fit: cover;
+  border-radius: 4px;
+  flex: none;
+}
+
+.scope-image-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+}
+
+.scope-image-tag {
+  flex: none;
+  font-size: 10px;
+  padding: 0 6px;
+  height: 18px;
+  line-height: 18px;
+  border-radius: 9px;
+  background: rgba(235, 145, 24, 0.18);
+  color: #ffb84d;
+}
+
+/* ===== 软件试用锁（授权）===== */
+.license-loading {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  background:
+    radial-gradient(circle at 50% 30%, rgba(43, 143, 255, 0.08), transparent 60%),
+    var(--bg-base);
+}
+
+.license-loading-text {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+/* 锁定全屏：网格 + 顶部光晕，与深色主题一致 */
+.license-lock {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background:
+    radial-gradient(circle at 50% 22%, rgba(43, 143, 255, 0.12), transparent 55%),
+    repeating-linear-gradient(
+      45deg,
+      #202025 0 14px,
+      #1c1c20 14px 28px
+    );
+}
+
+.license-card {
+  width: 380px;
+  max-width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 36px 32px 26px;
+  border-radius: 16px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+
+.license-card-icon {
+  width: 60px;
+  height: 60px;
+  margin: 0 auto;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  color: #ffb84d;
+  background: rgba(255, 184, 77, 0.12);
+  border: 1px solid rgba(255, 184, 77, 0.28);
+}
+
+.license-card-title {
+  text-align: center;
+  font-size: 19px;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: 0.5px;
+}
+
+.license-card-desc {
+  text-align: center;
+  font-size: 12.5px;
+  line-height: 1.8;
+  color: var(--text-secondary);
+}
+
+.license-input.ant-input-affix-wrapper {
+  height: 42px;
+  border-radius: 8px;
+  background: var(--bg-base);
+  border-color: var(--border);
+  color: var(--text-primary);
+}
+
+.license-input.ant-input-affix-wrapper:hover,
+.license-input.ant-input-affix-wrapper-focused {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(43, 143, 255, 0.22);
+}
+
+.license-input .ant-input {
+  background: transparent;
+  color: var(--text-primary);
+}
+
+.license-card .ant-btn-primary {
+  height: 42px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 2px;
+}
+
+.license-card-foot {
+  text-align: center;
+  font-size: 11px;
+  color: var(--text-secondary);
+  opacity: 0.7;
+}
