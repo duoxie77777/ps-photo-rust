@@ -169,39 +169,42 @@ function ToolPanel({
     <aside className="tool-panel">
       {scopeInfo && (
         <div className="scope-bar">
-          <span
-            className={`scope-bar-dot ${scopeInfo.hasImagePlan ? "is-solo" : ""}`}
-            aria-hidden
-          />
-          <div className="scope-bar-text">
-            <span className="scope-bar-title">
-              {scopeInfo.hasImagePlan ? "当前图片独立水印" : "全局默认水印"}
+          <div className="scope-bar-row">
+            <span
+              className={`scope-bar-dot ${scopeInfo.hasImagePlan ? "is-solo" : ""}`}
+              aria-hidden
+            />
+            <span
+              className="scope-bar-title"
+              title={scopeInfo.hasImagePlan ? "本图独立水印" : "全局默认水印"}
+            >
+              {scopeInfo.hasImagePlan ? "本图独立水印" : "全局默认水印"}
             </span>
-            <span className="scope-bar-label" title={scopeInfo.label}>
-              {scopeInfo.label}
-            </span>
+            {scopeInfo.hasImagePlan ? (
+              <Tooltip title="恢复为全局默认方案">
+                <Button
+                  className="scope-bar-action"
+                  size="small"
+                  type="text"
+                  icon={<LinkOutlined />}
+                  onClick={onFollowGlobal}
+                />
+              </Tooltip>
+            ) : (
+              <Tooltip title="将当前水印仅作用于本图">
+                <Button
+                  className="scope-bar-action"
+                  size="small"
+                  type="text"
+                  icon={<ScissorOutlined />}
+                  onClick={onMakeIndependent}
+                />
+              </Tooltip>
+            )}
           </div>
-          {scopeInfo.hasImagePlan ? (
-            <Button
-              className="scope-bar-action"
-              size="small"
-              type="text"
-              icon={<LinkOutlined />}
-              onClick={onFollowGlobal}
-            >
-              跟随全局
-            </Button>
-          ) : (
-            <Button
-              className="scope-bar-action"
-              size="small"
-              type="text"
-              icon={<ScissorOutlined />}
-              onClick={onMakeIndependent}
-            >
-              仅此图单独
-            </Button>
-          )}
+          <div className="scope-bar-label" title={scopeInfo.label}>
+            {scopeInfo.label}
+          </div>
         </div>
       )}
       <div className="tool-group">

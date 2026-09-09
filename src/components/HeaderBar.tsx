@@ -3,7 +3,6 @@ import { Button } from "antd";
 import {
   UploadOutlined,
   PlayCircleOutlined,
-  PictureOutlined,
   ExportOutlined,
   PlusOutlined,
 } from "@ant-design/icons";
@@ -13,7 +12,10 @@ interface HeaderBarProps {
   onProcess: () => void;
   /** 是否正在批量合成水印 */
   processing?: boolean;
-  imageCount: number;
+  /** 是否正在导出 */
+  exporting?: boolean;
+  /** 是否正在导入图片 / 生成缩略图 */
+  adding?: boolean;
   onExportSingle: () => void;
   canExport: boolean;
   onWatermarkCurrent: () => void;
@@ -23,7 +25,8 @@ function HeaderBar({
   onUploadClick,
   onProcess,
   processing,
-  imageCount,
+  exporting,
+  adding,
   onExportSingle,
   canExport,
   onWatermarkCurrent,
@@ -31,6 +34,9 @@ function HeaderBar({
   return (
     <header className="app-header">
       <div className="header-left">
+        <div className="app-logo">
+          <img src="/logo.png" alt="PS Photo" draggable={false} />
+        </div>
         <div className="app-titles">
           <span className="app-name">PS Photo</span>
           <span className="app-desc">批量图片处理工作台</span>
@@ -41,6 +47,8 @@ function HeaderBar({
         <Button
           type="primary"
           icon={<UploadOutlined />}
+          loading={adding}
+          disabled={adding}
           onClick={onUploadClick}
         >
           批量上传图片
@@ -52,10 +60,10 @@ function HeaderBar({
       </div>
 
       <div className="header-right">
-        <Button icon={<PictureOutlined />}>图库 ({imageCount})</Button>
         <Button
           icon={<ExportOutlined />}
-          disabled={!canExport}
+          loading={exporting}
+          disabled={!canExport || exporting}
           onClick={onExportSingle}
         >
           导出
@@ -67,6 +75,7 @@ function HeaderBar({
           onClick={onProcess}
           loading={processing}
           disabled={processing}
+          className="btn-process"
         >
           开始处理
         </Button>

@@ -72,10 +72,27 @@ export interface ComposeOptions {
 const clamp = (v: number, min: number, max: number) =>
   Math.min(max, Math.max(min, v));
 
+/** 已解码图片缓存（按 URL）：预览合成/导出对同一张图反复解码是主要耗时，
+    这里把解码后的元素缓存起来；FIFO 限量淘汰，避免长期运行内存膨胀。
+    注意：删除图片会 revoke objectURL，旧键此后不会再被请求，残留项随淘汰清出。 */
+const imgCache = new Map<string, HTMLImageElement>();
+const imgCacheOrder: string[] = [];
+const IMG_CACHE_MAX = 3;
+
 function loadImage(url: string): Promise<HTMLImageElement> {
+  const hit = imgCache.get(url);
+  if (hit) return Promise.resolve(hit);
   return new Promise((resolve, reject) => {
     const img = new Image();
-    img.onload = () => resolve(img);
+    img.onload = () => {
+      imgCache.set(url, img);
+      imgCacheOrder.push(url);
+      if (imgCacheOrder.length > IMG_CACHE_MAX) {
+        const oldest = imgCacheOrder.shift();
+        if (oldest) imgCache.delete(oldest);
+      }
+      resolve(img);
+    };
     img.onerror = () => reject(new Error("图片加载失败"));
     img.src = url;
   });

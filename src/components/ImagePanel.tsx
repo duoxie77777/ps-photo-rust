@@ -14,7 +14,6 @@ import {
 } from "@ant-design/icons";
 import type { PhotoItem } from "./types";
 import type { PanelTab } from "./EditorLayout";
-import { exportSingle } from "./exportUtil";
 
 export interface ProcessedMap {
   /** 主图 id → 结果条目；null 表示处理失败 */
@@ -92,6 +91,12 @@ interface ImagePanelProps {
   onAdd: () => void;
   onProcess: () => void;
   onExportAll: () => void;
+  /** 单张导出（悬浮小图标），统一走 EditorLayout 的导出 loading */
+  onExportOne: (item: PhotoItem) => void;
+  /** 是否正在导出（驱动导出按钮 loading / 禁用） */
+  exporting?: boolean;
+  /** 是否正在导入图片 / 生成缩略图（驱动批量添加 loading） */
+  adding?: boolean;
 }
 
 /** 每个 origin 在某个 Tab 下的展示状态 */
@@ -108,9 +113,11 @@ interface CardContext {
   currentId: string | null;
   activeTab: PanelTab;
   soloIds: Set<string>;
+  exporting: boolean;
   onTabChange: (tab: PanelTab) => void;
   onSelect: (mainId: string) => void;
   onDelete: (mainId: string, scope: "origin" | "result") => void;
+  onExportOne: (item: PhotoItem) => void;
 }
 
 /** 单个缩略图上的悬浮操作按钮 */
@@ -134,7 +141,9 @@ const renderThumbActions = (ctx: CardContext, o: PhotoItem, state: CardState) =>
             type="text"
             size="small"
             icon={<ExportOutlined />}
-            onClick={() => void exportSingle(exportItem!)}
+            loading={ctx.exporting}
+            disabled={ctx.exporting}
+            onClick={() => ctx.onExportOne(exportItem)}
           />
         </Tooltip>
       )}
@@ -302,9 +311,11 @@ const VirtualGrid = memo(function VirtualGrid({
   currentId,
   activeTab,
   soloIds,
+  exporting,
   onTabChange,
   onSelect,
   onDelete,
+  onExportOne,
 }: {
   originals: PhotoItem[];
   processed: ProcessedMap;
@@ -312,9 +323,11 @@ const VirtualGrid = memo(function VirtualGrid({
   currentId: string | null;
   activeTab: PanelTab;
   soloIds: Set<string>;
+  exporting: boolean;
   onTabChange: (tab: PanelTab) => void;
   onSelect: (mainId: string) => void;
   onDelete: (mainId: string, scope: "origin" | "result") => void;
+  onExportOne: (item: PhotoItem) => void;
 }) {
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const [metrics, setMetrics] = useState(() => ({
@@ -376,9 +389,11 @@ const VirtualGrid = memo(function VirtualGrid({
     currentId,
     activeTab,
     soloIds,
+    exporting,
     onTabChange,
     onSelect,
     onDelete,
+    onExportOne,
   };
 
   const rows: ReactNode[] = [];
@@ -409,6 +424,8 @@ function ImagePanel({
   currentId,
   activeTab,
   processing,
+  exporting,
+  adding,
   soloSignature,
   onTabChange,
   onSelect,
@@ -416,6 +433,7 @@ function ImagePanel({
   onAdd,
   onProcess,
   onExportAll,
+  onExportOne,
 }: ImagePanelProps) {
   /** 哪些主图有独立方案（从签名重建，签名不变则引用不变，配合 memo 稳定） */
   const soloIds = useMemo(() => {
@@ -448,7 +466,13 @@ function ImagePanel({
                 ? "把图片拖进窗口，或点击下方「批量添加」"
                 : "先添加原图并开始处理，结果会与每张原图一一对应显示在这里"}
             </p>
-            <Button type="primary" icon={<PlusOutlined />} onClick={onAdd}>
+            <Button
+              type="primary"
+              icon={<PlusOutlined />}
+              loading={adding}
+              disabled={adding}
+              onClick={onAdd}
+            >
               批量添加
             </Button>
           </div>
@@ -463,9 +487,11 @@ function ImagePanel({
         currentId={currentId}
         activeTab={activeTab}
         soloIds={soloIds}
+        exporting={exporting}
         onTabChange={onTabChange}
         onSelect={onSelect}
         onDelete={onDelete}
+        onExportOne={onExportOne}
       />
     );
   };
@@ -520,6 +546,8 @@ function ImagePanel({
           <Button
             type="primary"
             icon={<PlusOutlined />}
+            loading={adding}
+            disabled={adding}
             onClick={onAdd}
             className="ip-footer-main"
           >
@@ -528,7 +556,8 @@ function ImagePanel({
         )}
         <Button
           icon={<ExportOutlined />}
-          disabled={exportableCount === 0}
+          loading={exporting}
+          disabled={exportableCount === 0 || exporting}
           onClick={onExportAll}
         >
           导出全部

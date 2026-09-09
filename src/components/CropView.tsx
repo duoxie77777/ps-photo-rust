@@ -433,23 +433,25 @@ export default function CropView({ image, zoom, onCommit, onCancel }: CropViewPr
     <>
       <div className="crop-bar">
         <span className="crop-bar-title">裁剪</span>
-        <Tooltip title="撤销 Ctrl+Z">
+        <Tooltip title="回到上一步（Ctrl+Z）">
           <Button
             size="small"
-            type="text"
             icon={<UndoOutlined />}
             disabled={!canUndo}
             onClick={() => stepHistory(-1)}
-          />
+          >
+            上一步
+          </Button>
         </Tooltip>
-        <Tooltip title="重做 Ctrl+Shift+Z">
+        <Tooltip title="重做下一步（Ctrl+Shift+Z / Ctrl+Y）">
           <Button
             size="small"
-            type="text"
             icon={<RedoOutlined />}
             disabled={!canRedo}
             onClick={() => stepHistory(1)}
-          />
+          >
+            下一步
+          </Button>
         </Tooltip>
         <Segmented
           size="small"

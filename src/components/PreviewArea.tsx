@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { memo, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { App, Button, Input, Modal, Segmented, Select, Slider, TimePicker, Tooltip } from "antd";
 import dayjs from "dayjs";
 import {
@@ -63,6 +63,8 @@ interface PreviewAreaProps {
   /** 当前图片在原始列表中的序号（0 起）：日期顺序递增模式按此计算 */
   imageIndex?: number;
   onExport: () => void;
+  /** 是否正在导出 */
+  exporting?: boolean;
   /** 裁剪应用完成回调（EditorLayout 决定替换原图还是处理结果） */
   onCropApplied?: (result: { url: string; size: number; width: number; height: number }) => void;
   /** 选中的多个水印预设（多选叠加） */
@@ -931,6 +933,10 @@ function WatermarkOverlay({
     startX: number;
     startY: number;
     bounds: { minX: number; maxX: number; minY: number; maxY: number };
+    baseLeft: number;
+    baseTop: number;
+    baseWidth: number;
+    baseHeight: number;
   } | null>(null);
   /** 自实现双击检测（时间地点 LOGO 双击打开编辑弹窗） */
   const lastTapRef = useRef<{ t: number; x: number; y: number } | null>(null);
@@ -1194,9 +1200,11 @@ function WatermarkOverlay({
       if (Math.hypot(dx, dy) < 3) return;
       down.started = true;
       overlay.setPointerCapture(e.pointerId);
-      // 进入"跟手预览"窗口：显示水印 DOM（单击/双击不经过这里，完全无感）
+      // 进入"跟手窗口"：显示水印 DOM 实时跟随（单击/双击不经过这里，完全无感）
       onInteractingChange?.(true);
-      // 百分比基准统一为图片实际显示区域（rect），与 overlay 定位、导出一致
+      // 百分比基准统一为图片实际显示区域（rect），与 overlay 定位、导出一致；
+      // 把基准矩形缓存在 dragRef：move 阶段不再做任何 getBoundingClientRect 等
+      // 布局读取，纯数值换算 + 一次 style 写，避免拖动时触发同步布局抖动。
       const base = rectRef.current ?? img.getBoundingClientRect();
       dragRef.current = {
         startClientX: down.x,
@@ -1204,27 +1212,28 @@ function WatermarkOverlay({
         startX: position.x,
         startY: position.y,
         bounds: getBounds(base, visualRect()),
+        baseLeft: base.left,
+        baseTop: base.top,
+        baseWidth: base.width,
+        baseHeight: base.height,
       };
       return;
     }
 
     const drag = dragRef.current;
     if (!drag) return;
-    const base = rectRef.current ?? img.getBoundingClientRect();
-    const dxPct = ((e.clientX - drag.startClientX) / base.width) * 100;
-    const dyPct = ((e.clientY - drag.startClientY) / base.height) * 100;
+    const { baseLeft, baseTop, baseWidth, baseHeight } = drag;
+    const dxPct = ((e.clientX - drag.startClientX) / baseWidth) * 100;
+    const dyPct = ((e.clientY - drag.startClientY) / baseHeight) * 100;
     const next = {
       x: clampTo(drag.startX + dxPct, drag.bounds.minX, drag.bounds.maxX),
       y: clampTo(drag.startY + dyPct, drag.bounds.minY, drag.bounds.maxY),
     };
     // 拖拽全程零 React 渲染：位置直写 DOM 实时跟手（60fps 无卡顿），
-    // 暂存 ref，松手时一次性提交父组件（整场拖拽只触发一次合成）
+    // 暂存 ref，松手时一次性提交父组件（整场拖拽只触发一次最终合成）
     dragPosRef.current = next;
-    const r = rectRef.current;
-    if (r) {
-      overlay.style.left = `${r.left + (r.width * next.x) / 100}px`;
-      overlay.style.top = `${r.top + (r.height * next.y) / 100}px`;
-    }
+    overlay.style.left = `${baseLeft + (baseWidth * next.x) / 100}px`;
+    overlay.style.top = `${baseTop + (baseHeight * next.y) / 100}px`;
   };
 
   const handlePointerUp = () => {
@@ -1467,6 +1476,7 @@ function PreviewArea({
   image,
   imageIndex = 0,
   onExport,
+  exporting,
   onCropApplied,
   watermarkPresets,
   watermarkEnabled,
@@ -1516,8 +1526,12 @@ function PreviewArea({
   };
 
   // 合成预览：预览区永远只显示最终成品图（所见即所得），
-  // 编辑层退化为透明交互层；合成失败时 previewUrl 为空、自动降级为普通编辑层
-  const syntheticPreview = watermarkEnabled && watermarkPresets.length > 0;
+  // 编辑层退化为透明交互层；合成失败时 previewUrl 为空、自动降级为普通编辑层。
+  // 注意：拖拽进行中（interacting）强制关闭合成模式 —— 否则拖一下就要重编码一张
+  // PNG，叠加多个水印 + 大图时主线程会被编码卡死。拖拽期间改由 DOM 水印跟手
+  // 显示，松手后再做唯一一次最终合成。
+  const syntheticPreview =
+    watermarkEnabled && watermarkPresets.length > 0 && !interacting;
 
   useEffect(() => {
     composeSeqRef.current += 1;
@@ -1534,13 +1548,24 @@ function PreviewArea({
       applyPreviewUrl(null);
       composedForUrlRef.current = image.url;
     }
-    // 拖拽中：依然只显示合成成品图（所见即所得，不切"跟手窗口"），
-    // 缩短防抖让水印在成品图上实时跟随；松手后恢复标准防抖合成高清图
-    const delay = interacting ? 60 : 120;
+    // 拖拽过程中 syntheticPreview=false 会直接走上面的清理分支返回，不会进到这里；
+    // 因此到达此处的一定是"停顿后的最终合成"，统一用一次长防抖合并高频变更。
+    const delay = 160;
+    // 按预览区实际显示尺寸 + 设备像素比计算合成边长，而不是固定 1600：
+    // 屏幕只显示几百~一千 CSS 像素，固定 1600 会让每次合成白白多做 ~2.5× 的
+    // canvas + PNG 编码，大图上很容易把主线程压满造成"卡死"感。
+    const el = canvasRef.current;
+    const cssMax = el ? Math.max(el.clientWidth, el.clientHeight) : 1000;
+    const maxDim = Math.min(
+      1600,
+      Math.max(640, Math.ceil(cssMax * (window.devicePixelRatio || 1))),
+    );
     const seq = composeSeqRef.current;
     const timer = setTimeout(async () => {
       try {
-        let url = image.url;
+        // 预览合成同样从降采样大图起步：视觉与导出一致（百分比定位、同比例），
+        // 但解码/绘制成本显著低于全尺寸原图，避免大图上反复合成造成卡死
+        let url = image.displayUrl ?? image.url;
         let composed = false;
         // 与 handleProcess 相同的链式合成（多水印按选中顺序叠加）
         for (const preset of watermarkPresets) {
@@ -1561,7 +1586,7 @@ function PreviewArea({
               // 预览用无损 PNG：颜色与原图逐像素一致（无二次压缩）；
               // 位置/大小是百分比，与全尺寸导出一致（所见即所得）
               format: "png",
-              maxDim: 1600,
+              maxDim,
             }
           );
           if (seq !== composeSeqRef.current) {
@@ -1694,7 +1719,8 @@ function PreviewArea({
           <Button
             size="small"
             icon={<ExportOutlined />}
-            disabled={!image || cropActive}
+            loading={exporting}
+            disabled={!image || cropActive || exporting}
             onClick={onExport}
           >
             导出
@@ -1717,17 +1743,20 @@ function PreviewArea({
             />
           ) : (
             <>
-              {/* 底层：原图（始终显示，仅作为合成成品图的占位骨架） */}
+              {/* 底层：原图（始终显示，仅作为合成成品图的占位骨架）。
+                优先用导入时生成的降采样大图，避免切图时反复解码全尺寸原图导致卡死 */}
             <img
               ref={imgRef}
-              src={image.url}
+              src={image.displayUrl ?? image.url}
               alt={image.name}
               className="wm-base"
+              draggable={false}
               onLoad={(e) => {
                 const el = e.currentTarget;
-                if (el.naturalWidth > 0) {
-                  setNaturalSize({ w: el.naturalWidth, h: el.naturalHeight });
-                }
+                // 显示层是降采样图，但尺寸统计要按原图真实像素
+                const w = image.width ?? el.naturalWidth;
+                const h = image.height ?? el.naturalHeight;
+                if (w > 0 && h > 0) setNaturalSize({ w, h });
               }}
               style={{ transform: `scale(${zoom / 100})` }}
             />
@@ -1837,4 +1866,5 @@ function PreviewArea({
   );
 }
 
-export default PreviewArea;
+/** memo：EditorLayout 顶层的“无关状态”（处理进度、导入 loading 等）不再连带到本面板重渲染 */
+export default memo(PreviewArea);

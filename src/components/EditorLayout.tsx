@@ -8,7 +8,7 @@ import ImagePanel from "./ImagePanel";
 import { exportAll } from "./exportUtil";
 import { exportSingle } from "./exportUtil";
 import { composeWatermark } from "./composeWatermark";
-import { createThumbUrl } from "./thumb";
+import { createThumbAndDisplay } from "./thumb";
 import type {
   DatetimeLogoValues,
   GeoInfoLogoValues,
@@ -16,6 +16,7 @@ import type {
   PhotoItem,
   WatermarkOrientation,
   WatermarkPlan,
+  WatermarkPosition,
   WatermarkPositionsMap,
   WatermarkPreset,
   WatermarkScalesMap,
@@ -99,6 +100,13 @@ function EditorLayout() {
   >(() => loadGeoInfoOverrides());
   /** 是否正在批量合成水印 */
   const [processing, setProcessing] = useState(false);
+  /** 是否正在导出（单张/悬浮/全部共用，防并发 + 按钮 loading） */
+  const [exporting, setExporting] = useState(false);
+  const exportingRef = useRef(false);
+  /** 是否正在导入图片 / 生成缩略图（驱动「批量上传/批量添加」loading） */
+  const [adding, setAdding] = useState(false);
+  /** 进行中的缩略图任务数：并发导入时等所有批次都结束再收尾 */
+  const thumbTasksRef = useRef(0);
   /** 各预设按横/竖屏方向独立的水印位置（全局默认方案，预览中可拖拽调整） */
   const [watermarkPositions, setWatermarkPositions] =
     useState<WatermarkPositionsMap>({});
@@ -136,116 +144,174 @@ function EditorLayout() {
     // 首次导入时选中第一张；后续追加不打断当前查看
     setCurrentId((prev) => prev ?? newItems[0]?.id ?? null);
     // 后台分批为新增图片生成缩略图（避免一次性解码大量全尺寸原图导致卡顿）
-    void generateThumbsForOriginals(newItems, files);
+    setAdding(true);
+    thumbTasksRef.current += 1;
+    void generateThumbsForOriginals(newItems, files).finally(() => {
+      thumbTasksRef.current -= 1;
+      if (thumbTasksRef.current <= 0) {
+        thumbTasksRef.current = 0;
+        setAdding(false);
+      }
+    });
   };
 
   /**
-   * 为新导入的图片分批生成缩略图，生成完一批回写一批，
-   * 右栏卡片随缩略图就绪渐进显示小图（此前显示占位）。
+   * 为新导入的图片分批生成缩略图 + 预览大图（同一张原图只完整解码一次），
+   * 生成完一批回写一批，右栏卡片渐进显示小图、预览区则改用降采样大图。
    */
   const generateThumbsForOriginals = async (items: PhotoItem[], blobs: Blob[]) => {
-    const CHUNK = 4; // 同时解码张数，控制瞬时内存峰值
+    const CHUNK = 2; // 同时解码张数：一次解码 + 两级缩略比较吃内存，比原来更保守
     for (let i = 0; i < items.length; i += CHUNK) {
       const slice = items.slice(i, i + CHUNK);
       const results = await Promise.all(
         slice.map(async (item, k) => ({
           id: item.id,
-          url: await createThumbUrl(blobs[i + k]),
+          meta: await createThumbAndDisplay(blobs[i + k]),
         })),
       );
-      const thumbs = new Map<string, string>();
-      for (const r of results) if (r.url) thumbs.set(r.id, r.url);
-      if (thumbs.size === 0) continue;
+      const patch = new Map<
+        string,
+        { thumbUrl?: string; displayUrl?: string; width?: number; height?: number }
+      >();
+      for (const r of results) {
+        if (!r.meta.thumbUrl && !r.meta.displayUrl) continue;
+        patch.set(r.id, {
+          thumbUrl: r.meta.thumbUrl ?? undefined,
+          displayUrl: r.meta.displayUrl ?? undefined,
+          width: r.meta.width > 0 ? r.meta.width : undefined,
+          height: r.meta.height > 0 ? r.meta.height : undefined,
+        });
+      }
+      if (patch.size === 0) continue;
       setOriginals((prev) => {
         let changed = false;
         const next = prev.map((o) => {
-          const t = thumbs.get(o.id);
-          if (t) {
-            changed = true;
-            return { ...o, thumbUrl: t };
-          }
-          return o;
+          const p = patch.get(o.id);
+          if (!p) return o;
+          changed = true;
+          return { ...o, ...p };
         });
-        // 生成期间该批已被删除：释放没人引用的缩略图
-        if (!changed) thumbs.forEach((u) => URL.revokeObjectURL(u));
+        // 生成期间该批已被删除：释放没人引用的缩略图 / 预览大图
+        if (!changed) {
+          patch.forEach((p) => {
+            if (p.thumbUrl) URL.revokeObjectURL(p.thumbUrl);
+            if (p.displayUrl) URL.revokeObjectURL(p.displayUrl);
+          });
+        }
         return changed ? next : prev;
       });
     }
   };
 
   /**
-   * 为替换过大图的条目重建缩略图（裁剪应用后）。
-   * 新缩略图就绪后再替换并释放旧缩略图，避免卡片短暂破图。
+   * 为替换过大图的条目重建缩略图 + 预览大图（裁剪应用后）。
+   * 新图就绪后再替换并释放旧图，避免卡片短暂破图。
    */
   const refreshThumb = (
     mainId: string,
     scope: "origin" | "result",
     sourceUrl: string,
   ) => {
-    const prevThumb =
+    const prev =
       scope === "origin"
-        ? originals.find((o) => o.id === mainId)?.thumbUrl
-        : processed[mainId]?.thumbUrl;
+        ? originals.find((o) => o.id === mainId)
+        : processed[mainId];
     void (async () => {
-      const t = await createThumbUrl(sourceUrl);
-      if (!t) return;
+      const meta = await createThumbAndDisplay(sourceUrl);
+      const { thumbUrl: t, displayUrl: d, width, height } = meta;
+      if (!t && !d) return;
       if (scope === "origin") {
-        setOriginals((prev) => {
+        setOriginals((prevList) => {
           let changed = false;
-          const next = prev.map((o) => {
+          const next = prevList.map((o) => {
             if (o.id !== mainId) return o;
             changed = true;
-            if (prevThumb && o.thumbUrl === prevThumb)
-              URL.revokeObjectURL(prevThumb);
-            return { ...o, thumbUrl: t };
+            if (prev?.thumbUrl && o.thumbUrl === prev.thumbUrl)
+              URL.revokeObjectURL(prev.thumbUrl);
+            if (prev?.displayUrl && o.displayUrl === prev.displayUrl)
+              URL.revokeObjectURL(prev.displayUrl);
+            return {
+              ...o,
+              thumbUrl: t ?? o.thumbUrl,
+              displayUrl: d ?? o.displayUrl,
+              width: width > 0 ? width : o.width,
+              height: height > 0 ? height : o.height,
+            };
           });
-          if (!changed) URL.revokeObjectURL(t);
-          return changed ? next : prev;
+          if (!changed) {
+            if (t) URL.revokeObjectURL(t);
+            if (d) URL.revokeObjectURL(d);
+          }
+          return changed ? next : prevList;
         });
       } else {
-        setProcessed((prev) => {
-          const cur = prev[mainId];
+        setProcessed((prevMap) => {
+          const cur = prevMap[mainId];
           if (!cur) {
-            URL.revokeObjectURL(t);
-            return prev;
+            if (t) URL.revokeObjectURL(t);
+            if (d) URL.revokeObjectURL(d);
+            return prevMap;
           }
-          if (prevThumb && cur.thumbUrl === prevThumb)
-            URL.revokeObjectURL(prevThumb);
-          return { ...prev, [mainId]: { ...cur, thumbUrl: t } };
+          if (prev?.thumbUrl && cur.thumbUrl === prev.thumbUrl)
+            URL.revokeObjectURL(prev.thumbUrl);
+          if (prev?.displayUrl && cur.displayUrl === prev.displayUrl)
+            URL.revokeObjectURL(prev.displayUrl);
+          return {
+            ...prevMap,
+            [mainId]: {
+              ...cur,
+              thumbUrl: t ?? cur.thumbUrl,
+              displayUrl: d ?? cur.displayUrl,
+              width: width > 0 ? width : cur.width,
+              height: height > 0 ? height : cur.height,
+            },
+          };
         });
       }
     })();
   };
 
   /**
-   * 批量处理完成后，后台分批为成功结果生成缩略图。
+   * 批量处理完成后，后台分批为成功结果生成缩略图 + 预览大图。
    * 生成前卡片先显示占位，避免「处理结果」Tab 一次性解码所有全尺寸成品图。
    */
   const hydrateProcessedThumbs = async (
     entries: { mainId: string; url: string }[],
   ) => {
-    const CHUNK = 4;
+    const CHUNK = 2;
     for (let i = 0; i < entries.length; i += CHUNK) {
       const slice = entries.slice(i, i + CHUNK);
       const results = await Promise.all(
         slice.map(async (e) => ({
           mainId: e.mainId,
-          url: await createThumbUrl(e.url),
+          meta: await createThumbAndDisplay(e.url),
         })),
       );
-      const thumbs = new Map<string, string>();
-      for (const r of results) if (r.url) thumbs.set(r.mainId, r.url);
-      if (thumbs.size === 0) continue;
+      const patch = new Map<
+        string,
+        { thumbUrl?: string; displayUrl?: string; width?: number; height?: number }
+      >();
+      for (const r of results) {
+        if (!r.meta.thumbUrl && !r.meta.displayUrl) continue;
+        patch.set(r.mainId, {
+          thumbUrl: r.meta.thumbUrl ?? undefined,
+          displayUrl: r.meta.displayUrl ?? undefined,
+          width: r.meta.width > 0 ? r.meta.width : undefined,
+          height: r.meta.height > 0 ? r.meta.height : undefined,
+        });
+      }
+      if (patch.size === 0) continue;
       setProcessed((prev) => {
         const next = { ...prev };
         let changed = false;
-        for (const [id, url] of thumbs) {
+        for (const [id, p] of patch) {
           const cur = next[id];
           if (!cur) {
-            URL.revokeObjectURL(url);
+            if (p.thumbUrl) URL.revokeObjectURL(p.thumbUrl);
+            if (p.displayUrl) URL.revokeObjectURL(p.displayUrl);
             continue;
           }
-          next[id] = { ...cur, thumbUrl: url };
+          next[id] = { ...cur, ...p };
           changed = true;
         }
         return changed ? next : prev;
@@ -429,32 +495,58 @@ function EditorLayout() {
       }
       return;
     }
-    const result = await exportSingle(currentImage);
-    if (result === "ok") {
-      message.success(`已导出「${currentImage.name}」`);
-    } else if (result === "cancelled") {
-      message.info("已取消导出");
-    } else {
-      message.error(`导出「${currentImage.name}」失败`);
+    await performExport(currentImage);
+  };
+
+  /** 统一的单张导出：加锁防重入，并提供 loading 反馈 */
+  const performExport = async (item: PhotoItem) => {
+    if (exportingRef.current) return;
+    exportingRef.current = true;
+    setExporting(true);
+    try {
+      const result = await exportSingle(item);
+      if (result === "ok") {
+        message.success(`已导出「${item.name}」`);
+      } else if (result === "cancelled") {
+        message.info("已取消导出");
+      } else {
+        message.error(`导出「${item.name}」失败`);
+      }
+    } finally {
+      exportingRef.current = false;
+      setExporting(false);
     }
   };
 
+  /** 悬浮导出（右侧卡片小图标导出单张） */
+  const handleExportItem = async (item: PhotoItem) => {
+    await performExport(item);
+  };
+
   const handleExportAll = async () => {
+    if (exportingRef.current) return;
     if (exportList.length === 0) {
       message.warning("当前列表没有可导出的图片");
       return;
     }
-    const result = await exportAll(exportList);
-    if (result.cancelled) {
-      message.info("已取消导出");
-      return;
-    }
-    if (result.failed.length > 0) {
-      message.error(
-        `导出完成：成功 ${result.saved} 张，失败 ${result.failed.join("、")}`,
-      );
-    } else {
-      message.success(`已导出 ${result.saved} 张图片`);
+    exportingRef.current = true;
+    setExporting(true);
+    try {
+      const result = await exportAll(exportList);
+      if (result.cancelled) {
+        message.info("已取消导出");
+        return;
+      }
+      if (result.failed.length > 0) {
+        message.error(
+          `导出完成：成功 ${result.saved} 张，失败 ${result.failed.join("、")}`,
+        );
+      } else {
+        message.success(`已导出 ${result.saved} 张图片`);
+      }
+    } finally {
+      exportingRef.current = false;
+      setExporting(false);
     }
   };
 
@@ -471,9 +563,11 @@ function EditorLayout() {
       if (result) {
         URL.revokeObjectURL(result.url);
         if (result.thumbUrl) URL.revokeObjectURL(result.thumbUrl);
+        if (result.displayUrl) URL.revokeObjectURL(result.displayUrl);
       }
       URL.revokeObjectURL(origin.url);
       if (origin.thumbUrl) URL.revokeObjectURL(origin.thumbUrl);
+      if (origin.displayUrl) URL.revokeObjectURL(origin.displayUrl);
       const nextOriginals = originals.filter((o) => o.id !== mainId);
       setOriginals(nextOriginals);
       setProcessed((prev) => {
@@ -508,6 +602,7 @@ function EditorLayout() {
       if (result) {
         URL.revokeObjectURL(result.url);
         if (result.thumbUrl) URL.revokeObjectURL(result.thumbUrl);
+        if (result.displayUrl) URL.revokeObjectURL(result.displayUrl);
       }
       setProcessed((prev) => {
         if (!(mainId in prev)) return prev;
@@ -551,6 +646,36 @@ function EditorLayout() {
     setScopeSelectedIds(currentId ? [currentId] : []);
     setScopeMode("all");
     setScopeModalOpen(true);
+  };
+
+  /** 更新某个水印的位置（方向位分套；走当前编辑作用对象），稳定回调供 PreviewArea memo */
+  const handleWatermarkPositionChange = (
+    id: string,
+    orientation: WatermarkOrientation,
+    pos: WatermarkPosition,
+  ) => {
+    writeToEditingTarget({
+      ...editingPlan,
+      positions: {
+        ...(editingPlan.positions ?? {}),
+        [id]: { ...(editingPlan.positions?.[id] ?? {}), [orientation]: pos },
+      },
+    });
+  };
+
+  /** 更新某个水印的大小倍率（稳定回调供 PreviewArea memo） */
+  const handleWatermarkScaleChange = (
+    id: string,
+    orientation: WatermarkOrientation,
+    scale: number,
+  ) => {
+    writeToEditingTarget({
+      ...editingPlan,
+      scales: {
+        ...(editingPlan.scales ?? {}),
+        [id]: { ...(editingPlan.scales?.[id] ?? {}), [orientation]: scale },
+      },
+    });
   };
 
   /**
@@ -877,6 +1002,13 @@ function EditorLayout() {
     process: handleProcess,
     exportSingle: handleExportSingle,
     exportAll: handleExportAll,
+    exportItem: handleExportItem,
+    cropApply: handleCropApply,
+    watermarkPos: handleWatermarkPositionChange,
+    watermarkScale: handleWatermarkScaleChange,
+    removeWatermark: handleRemoveWatermark,
+    datetimeChange: handleDatetimeChange,
+    geoInfoChange: handleGeoInfoChange,
     deleteOne: handleDelete,
     tabChange: handleTabChange,
     selectOne: handleSelect,
@@ -891,6 +1023,13 @@ function EditorLayout() {
     process: handleProcess,
     exportSingle: handleExportSingle,
     exportAll: handleExportAll,
+    exportItem: handleExportItem,
+    cropApply: handleCropApply,
+    watermarkPos: handleWatermarkPositionChange,
+    watermarkScale: handleWatermarkScaleChange,
+    removeWatermark: handleRemoveWatermark,
+    datetimeChange: handleDatetimeChange,
+    geoInfoChange: handleGeoInfoChange,
     deleteOne: handleDelete,
     tabChange: handleTabChange,
     selectOne: handleSelect,
@@ -911,6 +1050,42 @@ function EditorLayout() {
   const runExportAll = useCallback(() => {
     void latestHandlersRef.current.exportAll();
   }, []);
+  const runExportItem = useCallback((item: PhotoItem) => {
+    void latestHandlersRef.current.exportItem(item);
+  }, []);
+  const runCropApply = useCallback(
+    (result: { url: string; size: number; width: number; height: number }) => {
+      latestHandlersRef.current.cropApply(result);
+    },
+    [],
+  );
+  const runWatermarkPositionChange = useCallback(
+    (id: string, orientation: WatermarkOrientation, pos: WatermarkPosition) => {
+      latestHandlersRef.current.watermarkPos(id, orientation, pos);
+    },
+    [],
+  );
+  const runWatermarkScaleChange = useCallback(
+    (id: string, orientation: WatermarkOrientation, scale: number) => {
+      latestHandlersRef.current.watermarkScale(id, orientation, scale);
+    },
+    [],
+  );
+  const runRemoveWatermark = useCallback((presetId: string) => {
+    latestHandlersRef.current.removeWatermark(presetId);
+  }, []);
+  const runDatetimeChange = useCallback(
+    (id: string, values: DatetimeLogoValues) => {
+      latestHandlersRef.current.datetimeChange(id, values);
+    },
+    [],
+  );
+  const runGeoInfoChange = useCallback(
+    (id: string, values: GeoInfoLogoValues) => {
+      latestHandlersRef.current.geoInfoChange(id, values);
+    },
+    [],
+  );
   const runDelete = useCallback((mainId: string, scope: "origin" | "result") => {
     latestHandlersRef.current.deleteOne(mainId, scope);
   }, []);
@@ -1009,7 +1184,8 @@ function EditorLayout() {
         onUploadClick={triggerUpload}
         onProcess={runProcess}
         processing={processing}
-        imageCount={originals.length}
+        exporting={exporting}
+        adding={adding}
         onExportSingle={runExportSingle}
         canExport={exportList.length > 0}
         onWatermarkCurrent={runWatermarkCurrent}
@@ -1031,41 +1207,24 @@ function EditorLayout() {
         <PreviewArea
           image={currentImage}
           imageIndex={currentImageIndex}
-          onExport={handleExportSingle}
-          onCropApplied={handleCropApply}
+          onExport={runExportSingle}
+          exporting={exporting}
+          onCropApplied={runCropApply}
           watermarkPresets={currentEffectivePresets}
           watermarkEnabled={currentPlan.presetIds.length > 0 && activeTab !== "processed"}
           watermarkPositions={currentPlan.positions ?? {}}
           watermarkOrientation={watermarkOrientation}
-          onWatermarkOrientationChange={(orientation) =>
-            setWatermarkOrientation(orientation)
-          }
-          onWatermarkPositionChange={(id, orientation, pos) =>
-            writeToEditingTarget({
-              ...editingPlan,
-              positions: {
-                ...(editingPlan.positions ?? {}),
-                [id]: { ...(editingPlan.positions?.[id] ?? {}), [orientation]: pos },
-              },
-            })
-          }
+          onWatermarkOrientationChange={setWatermarkOrientation}
+          onWatermarkPositionChange={runWatermarkPositionChange}
           watermarkScales={currentPlan.scales ?? {}}
-          onWatermarkScaleChange={(id, orientation, scale) =>
-            writeToEditingTarget({
-              ...editingPlan,
-              scales: {
-                ...(editingPlan.scales ?? {}),
-                [id]: { ...(editingPlan.scales?.[id] ?? {}), [orientation]: scale },
-              },
-            })
-          }
+          onWatermarkScaleChange={runWatermarkScaleChange}
           timeDigitSpacing={timeDigitSpacing}
           onTimeDigitSpacingChange={setTimeDigitSpacing}
           dateDigitSpacing={dateDigitSpacing}
           onDateDigitSpacingChange={setDateDigitSpacing}
-          onRemoveWatermark={handleRemoveWatermark}
-          onWatermarkDatetimeChange={handleDatetimeChange}
-          onWatermarkGeoInfoChange={handleGeoInfoChange}
+          onRemoveWatermark={runRemoveWatermark}
+          onWatermarkDatetimeChange={runDatetimeChange}
+          onWatermarkGeoInfoChange={runGeoInfoChange}
           emptyTitle={previewEmpty?.title ?? null}
           emptyText={previewEmpty?.text ?? null}
         />
@@ -1076,6 +1235,8 @@ function EditorLayout() {
           currentId={currentId}
           activeTab={activeTab}
           processing={processing}
+          exporting={exporting}
+          adding={adding}
           soloSignature={soloSignature}
           onTabChange={runTabChange}
           onSelect={runSelect}
@@ -1083,6 +1244,7 @@ function EditorLayout() {
           onAdd={triggerUpload}
           onProcess={runProcess}
           onExportAll={runExportAll}
+          onExportOne={runExportItem}
         />
       </div>
 

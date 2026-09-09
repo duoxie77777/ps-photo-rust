@@ -5,14 +5,39 @@
 }
 
 :root {
-  --bg-base: #1b1b1f;
-  --bg-panel: #232327;
-  --bg-elevated: #2b2b30;
-  --bg-hover: #33333a;
-  --border: #3a3a42;
-  --text-primary: #e6e6e9;
-  --text-secondary: #9a9aa3;
+  /* ===== 影像工作台 · 冷调深灰蓝体系 ===== */
+  --bg-base: #17181d;
+  --bg-panel: #1f2127;
+  --bg-elevated: #282b33;
+  --bg-hover: #333844;
+  --border: #3a3f4b;
+  --text-primary: #eceef4;
+  --text-secondary: #a5aab6;
+
   --accent: #2b8fff;
+  --accent-2: #7c6cff; /* 品牌渐变副色（蓝→紫） */
+  --accent-3: #22d3c5; /* 点缀青 */
+  --brand-grad: linear-gradient(135deg, #45a2ff 0%, #2b8fff 48%, #8a6bff 100%);
+  --brand-glow: 0 8px 22px -8px rgba(64, 145, 255, 0.55);
+  --panel-glow: inset 0 1px 0 rgba(255, 255, 255, 0.035);
+  --shadow-pop: 0 12px 32px -12px rgba(0, 0, 0, 0.65);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  :root {
+    /* 品牌光晕呼吸（仅在有动效偏好时生效） */
+    --brand-pulse: rgba(64, 145, 255, 0.55);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 html,
@@ -25,6 +50,14 @@ body {
   font-family: -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
   background: var(--bg-base);
   color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: rgba(43, 143, 255, 0.32);
+  color: #fff;
 }
 
 /* ===== 全局滚动条（细、半透明，覆盖所有容器与 antd 弹出层） ===== */
@@ -1998,13 +2031,20 @@ body {
 /* ===== 水印作用范围状态条（ToolPanel 顶部） ===== */
 .scope-bar {
   display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 7px 10px;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 10px;
   margin-bottom: 14px;
   border: 1px solid var(--border);
   border-radius: 8px;
   background: var(--bg-elevated);
+}
+
+.scope-bar-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
 }
 
 .scope-bar-dot {
@@ -2021,19 +2061,16 @@ body {
   box-shadow: 0 0 0 3px rgba(255, 159, 46, 0.18);
 }
 
-.scope-bar-text {
+.scope-bar-title {
   flex: 1;
   min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-}
-
-.scope-bar-title {
   font-size: 12px;
   font-weight: 600;
-  line-height: 16px;
+  line-height: 18px;
   color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .scope-bar-label {
@@ -2043,15 +2080,25 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  /* 文本左缘与 dot 后的标题左缘对齐（dot 7 + gap 8 = 15） */
+  padding-left: 15px;
 }
 
 .scope-bar-action.ant-btn {
   flex: none;
+  width: 24px;
   height: 24px;
-  margin: 0 -4px;
-  padding: 0 6px;
-  font-size: 12px;
+  padding: 0;
+  margin: 0;
   border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.scope-bar-action.ant-btn .anticon {
+  font-size: 13px;
+  margin: 0;
 }
 
 .scope-bar-action.ant-btn:hover {
@@ -2269,4 +2316,479 @@ body {
   font-size: 11px;
   color: var(--text-secondary);
   opacity: 0.7;
+}
+
+/* ============================================================
+   PRO 视觉升级层（置于末尾统一覆盖，不改变布局尺寸与逻辑）
+   目标：品牌感、层次感、动效质感 —— 让成品看起来更“值”。
+   ============================================================ */
+
+/* ---------- 顶部栏 ---------- */
+.app-header {
+  background:
+    radial-gradient(760px 140px at 6% -60px, rgba(43, 143, 255, 0.14), transparent 62%),
+    radial-gradient(640px 130px at 94% -70px, rgba(124, 108, 255, 0.11), transparent 62%),
+    linear-gradient(180deg, #262932 0%, #1f2127 100%);
+  border-bottom: none;
+  box-shadow: 0 1px 0 var(--border);
+}
+
+.app-logo {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: var(--brand-grad);
+  color: #fff;
+  font-weight: 800;
+  font-size: 12px;
+  letter-spacing: 0.5px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.28);
+  box-shadow:
+    var(--brand-glow),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  position: relative;
+  overflow: hidden;
+}
+.app-logo::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(165deg, rgba(255, 255, 255, 0.28) 0%, transparent 46%);
+}
+.app-logo-mark {
+  position: relative;
+  z-index: 1;
+}
+
+.app-name {
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: 0.4px;
+  background: linear-gradient(180deg, #ffffff 30%, #c9d6ff 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.app-desc {
+  font-size: 12px;
+  letter-spacing: 0.5px;
+  color: var(--text-secondary);
+  opacity: 0.92;
+}
+
+.header-center,
+.header-right {
+  gap: 8px;
+}
+
+/* 提示文案与操作按钮之间加细分隔，信息分组更清晰 */
+.header-hint {
+  color: var(--text-secondary);
+  opacity: 0.9;
+  padding-left: 12px;
+  margin-left: 4px;
+  border-left: 1px solid var(--border);
+}
+
+/* ---------- 主按钮体系 ---------- */
+/* 品牌主按钮：渐变 + 柔光 + 内高光（保留 loading / 禁用 / 幽灵态） */
+.ant-btn-primary:not([disabled]):not(.ant-btn-disabled):not(.ant-btn-dangerous):not(.ant-btn-background-ghost) {
+  background-image: var(--brand-grad) !important;
+  border-color: transparent !important;
+  box-shadow:
+    var(--brand-glow),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
+  transition: filter 0.18s ease;
+}
+.ant-btn-primary:not([disabled]):not(.ant-btn-disabled):not(.ant-btn-dangerous):not(.ant-btn-background-ghost):hover {
+  filter: brightness(1.1);
+}
+.ant-btn-primary:not([disabled]):not(.ant-btn-disabled):not(.ant-btn-dangerous):not(.ant-btn-background-ghost):active {
+  filter: brightness(0.94);
+}
+
+/* 幽灵主按钮：微调为更亮的品牌描边 */
+.ant-btn-primary.ant-btn-background-ghost {
+  color: #6db6ff;
+  border-color: rgba(43, 143, 255, 0.5);
+  box-shadow: inset 0 0 0 1px rgba(43, 143, 255, 0.08);
+}
+.ant-btn-primary.ant-btn-background-ghost:hover {
+  color: #9bc9ff !important;
+  border-color: rgba(43, 143, 255, 0.8) !important;
+  background: rgba(43, 143, 255, 0.1) !important;
+}
+
+/* 次级实底按钮：细腻的深色渐变玻璃感 */
+.ant-btn:not(.ant-btn-primary):not(.ant-btn-text):not(.ant-btn-link):not(.ant-btn-dangerous):not(.ant-btn-background-ghost) {
+  border-color: #3b404d;
+  background: linear-gradient(180deg, #2c2f39 0%, #252832 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  transition:
+    background 0.18s ease,
+    border-color 0.18s ease,
+    box-shadow 0.18s ease,
+    transform 0.08s ease;
+}
+.ant-btn:not(.ant-btn-primary):not(.ant-btn-text):not(.ant-btn-link):not(.ant-btn-dangerous):not(.ant-btn-background-ghost):hover {
+  background: linear-gradient(180deg, #343846 0%, #2c2f3a 100%);
+  border-color: #4d5465;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 4px 14px -8px rgba(0, 0, 0, 0.5);
+}
+.ant-btn:not(.ant-btn-primary):not(.ant-btn-text):not(.ant-btn-link):not(.ant-btn-dangerous):not(.ant-btn-background-ghost):active {
+  transform: translateY(1px);
+}
+
+/* ---------- 左栏 / 右栏面板 ---------- */
+.tool-panel,
+.image-panel {
+  background:
+    radial-gradient(280px 130px at 30% 0%, rgba(43, 143, 255, 0.055), transparent 72%),
+    linear-gradient(180deg, #22242c 0%, #1f2127 150px);
+}
+
+.tool-group-title,
+.tool-panel-title {
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+/* 作用范围条：柔光底色 */
+.scope-bar {
+  background:
+    linear-gradient(180deg, rgba(43, 143, 255, 0.06), transparent 92%),
+    var(--bg-elevated);
+  border-color: #414659;
+}
+.scope-bar-dot {
+  box-shadow:
+    0 0 0 3px rgba(43, 143, 255, 0.16),
+    0 0 10px rgba(43, 143, 255, 0.55);
+}
+.scope-bar-dot.is-solo {
+  box-shadow:
+    0 0 0 3px rgba(255, 159, 46, 0.18),
+    0 0 10px rgba(255, 159, 46, 0.5);
+}
+
+/* ---------- 预设卡片 ---------- */
+.preset-item {
+  background: linear-gradient(180deg, #2a2d37 0%, #262933 100%);
+  border-color: #363b47;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  transition:
+    border-color 0.16s ease,
+    box-shadow 0.16s ease,
+    background 0.16s ease;
+}
+.preset-item:hover {
+  border-color: #4b5265;
+  background: linear-gradient(180deg, #2e323d 0%, #292d38 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 6px 16px -10px rgba(0, 0, 0, 0.55);
+}
+.preset-item.active {
+  border-color: rgba(43, 143, 255, 0.85);
+  background: linear-gradient(180deg, rgba(43, 143, 255, 0.13), rgba(43, 143, 255, 0.04) 90%);
+  box-shadow:
+    0 0 0 1px rgba(43, 143, 255, 0.5),
+    0 8px 18px -10px rgba(43, 143, 255, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+.preset-item .ant-tag {
+  border-color: rgba(43, 143, 255, 0.4);
+  background: rgba(43, 143, 255, 0.12);
+  color: #79b8ff;
+}
+
+/* ---------- 预览区 ---------- */
+.preview-toolbar {
+  background: linear-gradient(180deg, #23262f 0%, #1f2127 100%);
+  border-bottom: 1px solid #333845;
+}
+.preview-name {
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  color: var(--text-primary);
+}
+
+.watermark-orientation-control,
+.watermark-size-control {
+  background: #262a33;
+  border-color: #3a3f4c;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
+.preview-statusbar {
+  background: #1d2026;
+  border-top: 1px solid #333845;
+  letter-spacing: 0.2px;
+}
+
+/* 空态：图标置入发光容器 */
+.preview-empty-icon {
+  width: 74px;
+  height: 74px;
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 30px;
+  color: #5da6ff;
+  background: linear-gradient(180deg, rgba(43, 143, 255, 0.14), rgba(43, 143, 255, 0.05));
+  border: 1px solid rgba(43, 143, 255, 0.26);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 12px 28px -14px rgba(43, 143, 255, 0.55);
+  margin-bottom: 6px;
+}
+
+/* ---------- 右栏 ---------- */
+.ip-seg {
+  background: #191b21;
+  border-color: #333844;
+}
+.ip-seg-btn.active {
+  background: var(--brand-grad);
+  box-shadow:
+    0 4px 12px -6px rgba(43, 143, 255, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.ip-card {
+  background: linear-gradient(180deg, #2a2d37 0%, #272a33 100%);
+  border-color: #363b47;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  transition:
+    border-color 0.16s ease,
+    box-shadow 0.16s ease;
+}
+.ip-card:hover {
+  border-color: #4d5466;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 8px 20px -12px rgba(0, 0, 0, 0.6);
+}
+.ip-card.is-active {
+  border-color: rgba(43, 143, 255, 0.9);
+  box-shadow:
+    0 0 0 1px rgba(43, 143, 255, 0.6),
+    0 10px 24px -14px rgba(43, 143, 255, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.ip-meta {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.015), rgba(0, 0, 0, 0.12));
+}
+
+.ip-badge {
+  backdrop-filter: blur(6px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  font-weight: 600;
+}
+.ip-badge-ok {
+  background: linear-gradient(180deg, rgba(40, 200, 120, 0.95), rgba(23, 148, 84, 0.92));
+}
+.ip-badge-solo {
+  background: linear-gradient(180deg, rgba(255, 176, 61, 0.98), rgba(235, 145, 24, 0.94));
+}
+
+.ip-empty-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 26px;
+  color: var(--text-secondary);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.ip-footer {
+  background: #1c1e24;
+}
+
+/* 提示小黄点：加微光 */
+.ip-hint-dot {
+  box-shadow: 0 0 6px rgba(216, 162, 58, 0.7);
+}
+
+/* ---------- 弹窗通用质感 ---------- */
+.ant-modal-root .ant-modal-content {
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-pop);
+}
+
+/* ---------- 授权页对齐新体系 ---------- */
+.license-lock {
+  background:
+    radial-gradient(circle at 50% 20%, rgba(43, 143, 255, 0.14), transparent 55%),
+    radial-gradient(circle at 85% 90%, rgba(124, 108, 255, 0.08), transparent 50%),
+    repeating-linear-gradient(45deg, #1c1e25 0 14px, #181a20 14px 28px);
+}
+.license-card {
+  background: linear-gradient(180deg, #23262f 0%, #1f2127 100%);
+  border-color: #3a3f4c;
+  box-shadow:
+    0 30px 80px rgba(0, 0, 0, 0.6),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+/* ============================================================
+   PRO 视觉升级 · 第二层（Logo 图片 / 入场动效 / 氛围光效）
+   仅覆盖视觉，布局尺寸与交互不变；prefers-reduced-motion 已由全局规则接管。
+   ============================================================ */
+
+/* ---------- Logo：文字标记 → 品牌图片（圆角裁切，适配方形应用图标） ---------- */
+.app-logo {
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  background: #191b21;
+  border-radius: 11px;
+  overflow: hidden;
+  box-shadow:
+    0 4px 14px -6px rgba(0, 0, 0, 0.7),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.09);
+  flex: none;
+}
+.app-logo::after {
+  display: none;
+}
+.app-logo-mark {
+  display: none;
+}
+.app-logo img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.app-titles {
+  margin-left: 2px;
+}
+
+/* ---------- 窗口入场动效（启动 / 解锁后登场） ---------- */
+@keyframes ui-rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.app-header {
+  animation: ui-rise 0.4s cubic-bezier(0.22, 0.68, 0.32, 1) both;
+}
+.tool-panel {
+  animation: ui-rise 0.45s 0.05s cubic-bezier(0.22, 0.68, 0.32, 1) both;
+}
+.preview-area {
+  animation: ui-rise 0.45s 0.1s cubic-bezier(0.22, 0.68, 0.32, 1) both;
+}
+.image-panel {
+  animation: ui-rise 0.45s 0.15s cubic-bezier(0.22, 0.68, 0.32, 1) both;
+}
+
+/* ---------- 分组标题：左侧品牌竖线标记 ---------- */
+.tool-group-title,
+.ip-panel-title {
+  position: relative;
+}
+.tool-group-title::before {
+  content: "";
+  display: inline-block;
+  width: 3px;
+  height: 12px;
+  margin-right: 7px;
+  border-radius: 2px;
+  vertical-align: -1px;
+  background: var(--brand-grad);
+  box-shadow: 0 0 8px rgba(43, 143, 255, 0.55);
+}
+
+/* ---------- 预览画布：四周氛围暗角（负层级，压在底色之上、所有前景之下） ---------- */
+.preview-canvas::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(125% 95% at 50% 42%, transparent 60%, rgba(0, 0, 0, 0.26) 100%);
+}
+
+/* ---------- 选中卡片：顶部渐变指示线，识别更明确 ---------- */
+.ip-card.is-active::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  z-index: 3;
+  background: var(--brand-grad);
+  opacity: 0.95;
+}
+
+/* ---------- 主操作 CTA：低频呼吸光（仅「开始处理」） ---------- */
+.btn-process.ant-btn-primary-background-ghost {
+  animation: cta-breathe 3s ease-in-out infinite;
+}
+@keyframes cta-breathe {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(43, 143, 255, 0);
+  }
+  50% {
+    box-shadow: 0 0 20px 0 rgba(43, 143, 255, 0.35);
+  }
+}
+
+/* ---------- 预览区工具栏左侧文件名：状态小圆点，信息更鲜活 ---------- */
+.preview-name::before {
+  content: "";
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-right: 8px;
+  border-radius: 50%;
+  vertical-align: 1px;
+  background: var(--brand-grad);
+  box-shadow: 0 0 8px rgba(43, 143, 255, 0.6);
+}
+
+/* ---------- 作用范围条图标按钮：悬停着色微光 ---------- */
+.scope-bar-action.ant-btn:hover {
+  color: #6db6ff !important;
+  background: rgba(43, 143, 255, 0.12) !important;
+}
+
+/* ---------- 面板接缝：用渐变柔化生硬边界 ---------- */
+.tool-panel {
+  border-right: 1px solid transparent;
+  background-image:
+    radial-gradient(280px 130px at 30% 0%, rgba(43, 143, 255, 0.055), transparent 72%),
+    linear-gradient(90deg, #22242c, #1f2127 220px);
+}
+.image-panel {
+  border-left: 1px solid transparent;
+  background-image:
+    radial-gradient(280px 130px at 70% 0%, rgba(124, 108, 255, 0.05), transparent 72%),
+    linear-gradient(270deg, #22242c, #1f2127 240px);
+}
+
+/* ---------- 底部状态栏左右信息分组 ---------- */
+.preview-statusbar {
+  gap: 12px;
 }
