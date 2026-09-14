@@ -1,6 +1,6 @@
 import { memo, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
-import { Button, Popconfirm, Tooltip } from "antd";
+import { Button, Dropdown, Popconfirm, Tooltip } from "antd";
 import {
   PlusOutlined,
   DeleteOutlined,
@@ -11,6 +11,7 @@ import {
   PictureOutlined,
   PlayCircleOutlined,
   FileImageOutlined,
+  ClearOutlined,
 } from "@ant-design/icons";
 import type { PhotoItem } from "./types";
 import type { PanelTab } from "./EditorLayout";
@@ -97,6 +98,10 @@ interface ImagePanelProps {
   exporting?: boolean;
   /** 是否正在导入图片 / 生成缩略图（驱动批量添加 loading） */
   adding?: boolean;
+  /** 一键清除所有处理结果（保留原图） */
+  onClearResults: () => void;
+  /** 一键清空全部图片（原图 + 结果），回到空状态继续添加 */
+  onClearAll: () => void;
 }
 
 /** 每个 origin 在某个 Tab 下的展示状态 */
@@ -434,6 +439,8 @@ function ImagePanel({
   onProcess,
   onExportAll,
   onExportOne,
+  onClearResults,
+  onClearAll,
 }: ImagePanelProps) {
   /** 哪些主图有独立方案（从签名重建，签名不变则引用不变，配合 memo 稳定） */
   const soloIds = useMemo(() => {
@@ -497,29 +504,66 @@ function ImagePanel({
   };
 
   const pendingHint = activeTab === "processed" && pendingCount > 0 && failedCount + doneCount > 0;
+  const hasResults = doneCount + failedCount > 0;
+  const hasAnyImage = originals.length > 0 || hasResults;
 
   return (
     <aside className="image-panel">
       <div className="ip-header">
-        <div className="ip-seg">
-          <button
-            type="button"
-            className={`ip-seg-btn ${activeTab === "origin" ? "active" : ""}`}
-            onClick={() => onTabChange("origin")}
-          >
-            原图
-            <span className="ip-seg-num">{originals.length}</span>
-          </button>
-          <button
-            type="button"
-            className={`ip-seg-btn ${activeTab === "processed" ? "active" : ""}`}
-            onClick={() => onTabChange("processed")}
-          >
-            处理结果
-            <span className="ip-seg-num">
-              {originals.length ? `${doneCount}/${originals.length}` : "0"}
-            </span>
-          </button>
+        <div className="ip-header-row">
+          <div className="ip-seg">
+            <button
+              type="button"
+              className={`ip-seg-btn ${activeTab === "origin" ? "active" : ""}`}
+              onClick={() => onTabChange("origin")}
+            >
+              原图
+              <span className="ip-seg-num">{originals.length}</span>
+            </button>
+            <button
+              type="button"
+              className={`ip-seg-btn ${activeTab === "processed" ? "active" : ""}`}
+              onClick={() => onTabChange("processed")}
+            >
+              处理结果
+              <span className="ip-seg-num">
+                {originals.length ? `${doneCount}/${originals.length}` : "0"}
+              </span>
+            </button>
+          </div>
+          <Tooltip title="清理图片">
+            <Dropdown
+              trigger={["click"]}
+              disabled={!hasAnyImage || processing}
+              menu={{
+                items: [
+                  {
+                    key: "results",
+                    icon: <DeleteOutlined />,
+                    label: "清除处理结果",
+                    disabled: !hasResults,
+                  },
+                  {
+                    key: "all",
+                    icon: <ClearOutlined />,
+                    label: "清空全部图片",
+                    danger: true,
+                  },
+                ],
+                onClick: ({ key }) => {
+                  if (key === "results") onClearResults();
+                  else if (key === "all") onClearAll();
+                },
+              }}
+            >
+              <Button
+                size="small"
+                type="text"
+                className="ip-clear-btn"
+                icon={<ClearOutlined />}
+              />
+            </Dropdown>
+          </Tooltip>
         </div>
         {pendingHint && (
           <div className="ip-hint">

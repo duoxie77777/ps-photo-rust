@@ -51,7 +51,7 @@ function clonePlan(plan: WatermarkPlan): WatermarkPlan {
 }
 
 function EditorLayout() {
-  const { message } = App.useApp();
+  const { message, modal } = App.useApp();
   /** 主原图列表（id 即主 id，始终不带前缀） */
   const [originals, setOriginals] = useState<PhotoItem[]>([]);
   /**
@@ -624,6 +624,81 @@ function EditorLayout() {
     }
   };
 
+  /**
+   * 一键清除所有「处理结果」（保留原图）：
+   * 释放全部结果 URL / 缩略图 / 预览大图，清空结果与失败记录；
+   * 之后可继续添加图片或重新处理，无需退出软件。
+   */
+  const handleClearResults = () => {
+    if (processing || exporting) return;
+    const resultItems = Object.values(processed).filter(
+      (r): r is PhotoItem => !!r,
+    );
+    const hasAny = resultItems.length > 0 || Object.keys(failures).length > 0;
+    if (!hasAny) {
+      message.info("当前没有可清除的处理结果");
+      return;
+    }
+    modal.confirm({
+      title: "清除所有处理结果？",
+      content: `将删除 ${resultItems.length} 张生成图（原图保留）。清除后可继续添加图片或重新处理。`,
+      okText: "清除",
+      okType: "danger",
+      cancelText: "取消",
+      onOk: () => {
+        resultItems.forEach((r) => {
+          URL.revokeObjectURL(r.url);
+          if (r.thumbUrl) URL.revokeObjectURL(r.thumbUrl);
+          if (r.displayUrl) URL.revokeObjectURL(r.displayUrl);
+        });
+        setProcessed({});
+        setFailures({});
+        setActiveTab("origin");
+        message.success("已清除所有处理结果");
+      },
+    });
+  };
+
+  /**
+   * 一键清空全部图片（原图 + 处理结果），回到初始空状态：
+   * 水印预设与编辑设置保留，清空后可立即继续添加新图片，无需重启软件。
+   */
+  const handleClearAll = () => {
+    if (processing || exporting) return;
+    if (originals.length === 0 && Object.keys(processed).length === 0) {
+      message.info("当前没有图片");
+      return;
+    }
+    modal.confirm({
+      title: "清空全部图片？",
+      content: `将移除 ${originals.length} 张原图及其全部处理结果（水印预设会保留）。清空后可继续添加新图片。`,
+      okText: "清空",
+      okType: "danger",
+      cancelText: "取消",
+      onOk: () => {
+        originals.forEach((o) => {
+          URL.revokeObjectURL(o.url);
+          if (o.thumbUrl) URL.revokeObjectURL(o.thumbUrl);
+          if (o.displayUrl) URL.revokeObjectURL(o.displayUrl);
+        });
+        Object.values(processed).forEach((r) => {
+          if (!r) return;
+          URL.revokeObjectURL(r.url);
+          if (r.thumbUrl) URL.revokeObjectURL(r.thumbUrl);
+          if (r.displayUrl) URL.revokeObjectURL(r.displayUrl);
+        });
+        setOriginals([]);
+        setProcessed({});
+        setFailures({});
+        setImagePlans({});
+        setCurrentId(null);
+        setActiveTab("origin");
+        setEditingTarget("global");
+        message.success("已清空全部图片，可继续添加");
+      },
+    });
+  };
+
   const checkPreset = () => {
     if (watermarkPresets.length === 0) {
       message.warning("暂无本机水印预设");
@@ -1009,6 +1084,8 @@ function EditorLayout() {
     removeWatermark: handleRemoveWatermark,
     datetimeChange: handleDatetimeChange,
     geoInfoChange: handleGeoInfoChange,
+    clearResults: handleClearResults,
+    clearAll: handleClearAll,
     deleteOne: handleDelete,
     tabChange: handleTabChange,
     selectOne: handleSelect,
@@ -1030,6 +1107,8 @@ function EditorLayout() {
     removeWatermark: handleRemoveWatermark,
     datetimeChange: handleDatetimeChange,
     geoInfoChange: handleGeoInfoChange,
+    clearResults: handleClearResults,
+    clearAll: handleClearAll,
     deleteOne: handleDelete,
     tabChange: handleTabChange,
     selectOne: handleSelect,
@@ -1086,6 +1165,12 @@ function EditorLayout() {
     },
     [],
   );
+  const runClearResults = useCallback(() => {
+    latestHandlersRef.current.clearResults();
+  }, []);
+  const runClearAll = useCallback(() => {
+    latestHandlersRef.current.clearAll();
+  }, []);
   const runDelete = useCallback((mainId: string, scope: "origin" | "result") => {
     latestHandlersRef.current.deleteOne(mainId, scope);
   }, []);
@@ -1245,6 +1330,8 @@ function EditorLayout() {
           onProcess={runProcess}
           onExportAll={runExportAll}
           onExportOne={runExportItem}
+          onClearResults={runClearResults}
+          onClearAll={runClearAll}
         />
       </div>
 
