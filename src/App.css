@@ -2792,3 +2792,30 @@ body {
 .preview-statusbar {
   gap: 12px;
 }
+
+/* ---------- 右栏头部：Tab 与「清理图片」入口同排 ---------- */
+.ip-header-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.ip-header-row .ip-seg {
+  flex: 1;
+  min-width: 0;
+}
+.ip-clear-btn.ant-btn {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  min-width: 0;
+  padding: 0;
+  color: var(--text-secondary);
+  border-radius: 6px;
+}
+.ip-clear-btn.ant-btn:hover {
+  color: #ff7875 !important;
+  background: rgba(255, 77, 79, 0.12) !important;
+}
+.ip-clear-btn.ant-btn[disabled] {
+  color: #5a5f6b;
+}
