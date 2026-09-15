@@ -118,9 +118,9 @@ function EditorLayout() {
     {},
   );
   /** 时间行大数字（0-9 字形）间距（基准 px，随水印缩放；负值 = 往里缩） */
-  const [timeDigitSpacing, setTimeDigitSpacing] = useState(-15);
+  const [timeDigitSpacing, setTimeDigitSpacing] = useState(-9);
   /** 日期行小数字（0-9 字形）间距（基准 px，随水印缩放；负值 = 往里缩） */
-  const [dateDigitSpacing, setDateDigitSpacing] = useState(-2);
+  const [dateDigitSpacing, setDateDigitSpacing] = useState(-1);
   /** 拖拽上传：是否有文件正拖入窗口 */
   const [dragActive, setDragActive] = useState(false);
   /** 拖拽计数器，防止经过子元素时闪烁 */
@@ -916,6 +916,7 @@ function EditorLayout() {
                 ),
                 timeDigitSpacing,
                 dateDigitSpacing,
+                orientation: watermarkOrientation,
               },
             );
             // 释放中间合成结果的临时 URL（保留原图 URL）

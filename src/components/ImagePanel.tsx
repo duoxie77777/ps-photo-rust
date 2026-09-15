@@ -113,7 +113,7 @@ interface CardContext {
   currentId: string | null;
   activeTab: PanelTab;
   soloIds: Set<string>;
-  exporting: boolean;
+  exporting?: boolean;
   onTabChange: (tab: PanelTab) => void;
   onSelect: (mainId: string) => void;
   onDelete: (mainId: string, scope: "origin" | "result") => void;
@@ -323,7 +323,7 @@ const VirtualGrid = memo(function VirtualGrid({
   currentId: string | null;
   activeTab: PanelTab;
   soloIds: Set<string>;
-  exporting: boolean;
+  exporting?: boolean;
   onTabChange: (tab: PanelTab) => void;
   onSelect: (mainId: string) => void;
   onDelete: (mainId: string, scope: "origin" | "result") => void;

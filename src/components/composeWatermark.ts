@@ -6,10 +6,12 @@ import {
 import { resolveGeoInfoTimeText } from "./GeoInfoLogo";
 import { digitCharsOf, loadNumberGlyph } from "./numberGlyphs";
 import dingwei3Url from "../assets/dingwei3.png";
+import { resolveCaptionLetterSpacing } from "./watermarkStore";
 import type {
   DatetimeLogoValues,
   GeoInfoLogoValues,
   PhotoItem,
+  WatermarkOrientation,
   WatermarkPreset,
 } from "./types";
 
@@ -57,6 +59,8 @@ export interface ComposeOptions {
   dateIndex?: number;
   /** 水印大小倍率（百分比，100 = 基准大小） */
   scale?: number;
+  /** 水印方向（横屏 / 竖屏）：LOGO 右侧文字字间距等按方向取值；不传按横屏 */
+  orientation?: WatermarkOrientation;
   /** 时间行大数字（0-9 字形）间距（基准 px，随水印大小缩放；负值 = 往里缩），仅时间地点 LOGO 生效 */
   timeDigitSpacing?: number;
   /** 日期行小数字（0-9 字形）间距（基准 px，随水印大小缩放；负值 = 往里缩），仅时间地点 LOGO 生效 */
@@ -775,10 +779,11 @@ export async function composeWatermark(
         typeof preset.config?.captionFontWeight === "number"
           ? preset.config.captionFontWeight
           : "normal";
-      const captionLetterSpacing =
-        typeof preset.config?.captionLetterSpacing === "number"
-          ? preset.config.captionLetterSpacing
-          : 1;
+      // 右侧文字字间距：按方向取值（预览 DOM 走同一函数，保证一致）
+      const captionLetterSpacing = resolveCaptionLetterSpacing(
+        preset,
+        opts.orientation ?? "landscape",
+      );
       const captionStrokeWidth =
         typeof preset.config?.captionStrokeWidth === "number"
           ? preset.config.captionStrokeWidth

@@ -16,8 +16,8 @@ export const WATERMARK_PRESETS_KEY = "ps-photo:watermark-presets";
 /**
  * 各预设的默认位置（未拖拽记录时使用），横屏 / 竖屏各一套独立取值。
  * 竖屏默认按竖屏基准图（约 1288×1699 px）反算：
- * - 时间地点 LOGO 中心点落于 631 × 1461 px → X 49% · Y 86%
- * - LOGO 水印中心点落于 1031 × 1665 px → X 81% · Y 98%
+ * - 时间地点 LOGO 中心点落于 644 × 1453 px → X 50% · Y 85.5%
+ * - LOGO 水印（水印相机）中心点落于 1038 × 1657 px → X 80.59% · Y 97.53%
  */
 export const DEFAULT_WATERMARK_POSITIONS: Record<
   WatermarkOrientation,
@@ -28,18 +28,19 @@ export const DEFAULT_WATERMARK_POSITIONS: Record<
     "builtin-datetime-logo": { x: 50, y: 81 },
     // 地理信息水印：左下角，X 15% · Y 77%（中心点）
     "builtin-geo-info-logo": { x: 15, y: 77 },
-    // 内置 LOGO 水印默认在右下角（按 3264×2448 基准图反算：中心点精确落于 2673 × 2350 px，即 X 82% · Y 96%）
-    "builtin-logo1": { x: 82, y: 96 },
+    // 内置 LOGO 水印默认在右下角：X 80.59% · Y 95.84%（较 81% · 96% 左移 7px、上移 2px；
+    // 按编辑原图约 1699×1277 px 反算：1% ≈ 16.99 × 12.77 px，中心点落于 1369 × 1224 px）
+    "builtin-logo1": { x: 80.59, y: 95.84 },
     // 现场拍照 LOGO（logo2）：X 33% · Y 51%（中心点 235 × 270 px）
     "builtin-logo2": { x: 33, y: 51 },
   },
   portrait: {
-    // 时间地点 LOGO：X 49% · Y 86%（中心点 631 × 1461 px，按约 1288×1699 竖屏基准图反算）
-    "builtin-datetime-logo": { x: 49, y: 86 },
+    // 时间地点 LOGO：X 50% · Y 85.5%（中心点 644 × 1453 px，按约 1288×1699 竖屏基准图反算；比 86% 共上移约 8px）
+    "builtin-datetime-logo": { x: 50, y: 85.5 },
     // 地理信息水印：竖屏固定默认 X 20% · Y 82%（中心点 478 × 2674 px）
     "builtin-geo-info-logo": { x: 20, y: 82 },
-    // LOGO 水印：右下角，X 82% · Y 98%（中心点 2001 × 3187 px）
-    "builtin-logo1": { x: 82, y: 98 },
+    // LOGO 水印（水印相机）：右下角，X 80.59% · Y 97.53%（中心点 1038 × 1657 px，按 1288×1699 竖屏基准图反算；较 98% 上移约 8px、较 81% 左移约 5px）
+    "builtin-logo1": { x: 80.59, y: 97.53 },
     // 现场拍照 LOGO（logo2）：竖屏默认 X 27% · Y 50%（中心点 661 × 1640 px）
     "builtin-logo2": { x: 27, y: 50 },
   },
@@ -93,7 +94,10 @@ export function resolveWatermarkPosition(
   orientation: WatermarkOrientation,
   map?: WatermarkPositionsMap,
 ): WatermarkPosition {
-  return map?.[preset.id]?.[orientation] ?? defaultWatermarkPosition(preset, orientation);
+  return (
+    map?.[preset.id]?.[orientation] ??
+    defaultWatermarkPosition(preset, orientation)
+  );
 }
 
 /** 读取预设的默认大小倍率（按预设 ID + 方向区分） */
@@ -119,6 +123,28 @@ export function resolveWatermarkScale(
 ): number {
   const recorded = map?.[preset.id]?.[orientation];
   return recorded ?? defaultWatermarkScale(preset.id, orientation);
+}
+
+/**
+ * 读取 LOGO 右侧文字（caption，如「水印相机」）的字间距（基准像素，随水印缩放）。
+ * 支持按横/竖屏分别配置，优先级从高到低：
+ *   1. config.captionLetterSpacingByOrientation[orientation]（只影响该方向）
+ *   2. config.captionLetterSpacing（两个方向共用）
+ *   3. fallback（默认 1）
+ * 预览 DOM 与成品 canvas 都走这里，保证所见即所得。
+ */
+export function resolveCaptionLetterSpacing(
+  preset: Pick<WatermarkPreset, "config">,
+  orientation: WatermarkOrientation,
+  fallback = 1,
+): number {
+  const byOrientation = preset.config?.captionLetterSpacingByOrientation as
+    | Partial<Record<WatermarkOrientation, number>>
+    | undefined;
+  const oriented = byOrientation?.[orientation];
+  if (typeof oriented === "number") return oriented;
+  const base = preset.config?.captionLetterSpacing;
+  return typeof base === "number" ? base : fallback;
 }
 
 /** 时间地点 LOGO 编辑值覆盖（按预设 ID 存储）的 localStorage 存储键 */
@@ -237,6 +263,12 @@ export const BUILTIN_WATERMARK_PRESETS: WatermarkPreset[] = [
       caption: "水印相机",
       // 基准字号：默认 35% 倍率下预览视觉 ≈ 20px，与导出同比例放大（所见即所得）
       captionFontSize: 77,
+      /**
+       * 「水印相机」四个字的字间距（基准像素，随水印缩放；实际字距 = 该值 × 缩放比例）。
+       * 横屏 / 竖屏各配一套，互不影响：改 landscape 只动横屏，改 portrait 只动竖屏。
+       * 只写一侧时，另一侧回退 captionLetterSpacing（未设 → 1）。
+       */
+      captionLetterSpacingByOrientation: { landscape: 10, portrait: 10 },
       /** LOGO 与右侧文字的间距（按预设分开控制，不设则用全局 LOGO_CAPTION_GAP） */
       captionGap: 12,
       /** 文字垂直偏移（按预设分开控制，不设则用全局 LOGO_CAPTION_DY） */

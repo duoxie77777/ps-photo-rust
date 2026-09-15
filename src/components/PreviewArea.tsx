@@ -42,7 +42,11 @@ import {
   LOGO_IMG_DX,
   LOGO_IMG_DY,
 } from "./composeWatermark";
-import { resolveWatermarkPosition, resolveWatermarkScale } from "./watermarkStore";
+import {
+  resolveCaptionLetterSpacing,
+  resolveWatermarkPosition,
+  resolveWatermarkScale,
+} from "./watermarkStore";
 import CropView from "./CropView";
 import type {
   DatetimeLogoValues,
@@ -830,6 +834,8 @@ interface WatermarkOverlayProps {
   onPositionChange: (pos: WatermarkPosition) => void;
   /** 水印大小倍率（百分比） */
   scale: number;
+  /** 当前水印方向（横屏 / 竖屏）：LOGO 右侧文字字间距按方向取值 */
+  orientation: WatermarkOrientation;
   onRemove: () => void;
   canvasRef: React.RefObject<HTMLDivElement | null>;
   imgRef: React.RefObject<HTMLImageElement | null>;
@@ -857,6 +863,7 @@ function WatermarkOverlay({
   position,
   onPositionChange,
   scale,
+  orientation,
   onRemove,
   canvasRef,
   imgRef,
@@ -893,8 +900,8 @@ function WatermarkOverlay({
     typeof preset.config?.captionFontWeight === "number"
       ? preset.config.captionFontWeight
       : "normal";
-  const captionLetterSpacing =
-    typeof preset.config?.captionLetterSpacing === "number" ? preset.config.captionLetterSpacing : 1;
+  /** 右侧文字（如「水印相机」）字间距：按方向取值（竖屏可单独配），与导出共用同一解析函数 */
+  const captionLetterSpacing = resolveCaptionLetterSpacing(preset, orientation);
   const captionStrokeWidth =
     typeof preset.config?.captionStrokeWidth === "number" ? preset.config.captionStrokeWidth : 0;
   const captionStrokeColor =
@@ -1583,6 +1590,7 @@ function PreviewArea({
               scale: resolveWatermarkScale(preset, watermarkOrientation, watermarkScales),
               timeDigitSpacing,
               dateDigitSpacing,
+              orientation: watermarkOrientation,
               // 预览用无损 PNG：颜色与原图逐像素一致（无二次压缩）；
               // 位置/大小是百分比，与全尺寸导出一致（所见即所得）
               format: "png",
@@ -1792,6 +1800,7 @@ function PreviewArea({
                     watermarkOrientation,
                     watermarkScales
                   )}
+                  orientation={watermarkOrientation}
                   onRemove={() => onRemoveWatermark(preset.id)}
                   canvasRef={canvasRef}
                   imgRef={imgRef}
